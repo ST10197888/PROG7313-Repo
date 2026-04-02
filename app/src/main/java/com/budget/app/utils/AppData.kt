@@ -297,7 +297,7 @@ object AppData {
         addTransaction("Emergency Fund Contribution", 2000.0, TransactionType.SAVINGS, "Emergency Fund", date = now)
         addTransaction("Holiday Savings", 2500.0, TransactionType.SAVINGS, "Holiday / Travel Fund", date = now)
 
-        // 3 DEBT PAYMENTS (Directly as Expense transactions)
+        // 3 DEBT PAYMENTS (As Expense transactions)
         addTransaction("Credit Card Payment", 1200.0, TransactionType.EXPENSE, "Debt Payment", date = prev)
         addTransaction("Personal Loan Payment", 2000.0, TransactionType.EXPENSE, "Debt Payment", date = prev)
         addTransaction("Credit Card Payment", 1500.0, TransactionType.EXPENSE, "Debt Payment", date = now)
