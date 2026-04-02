@@ -1,0 +1,67 @@
+package com.budget.app.fragments
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
+import android.widget.Spinner
+import android.widget.ArrayAdapter
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.budget.app.R
+import com.budget.app.adapters.BudgetGoalAdapter
+import com.budget.app.utils.AppData
+
+class BudgetGoalsFragment : Fragment() {
+
+    private lateinit var adapter: BudgetGoalAdapter
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
+        inflater.inflate(R.layout.fragment_budget_goals, container, false)
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val spinner   = view.findViewById<Spinner>(R.id.spinnerBudgetCategory)
+        val etLimit   = view.findViewById<EditText>(R.id.etBudgetLimit)
+        val btnAdd    = view.findViewById<Button>(R.id.btnAddBudget)
+        val rv        = view.findViewById<RecyclerView>(R.id.rvBudgetGoals)
+
+        // Category spinner
+        val catAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, AppData.expenseCategories)
+        catAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinner.adapter = catAdapter
+
+        // RecyclerView
+        adapter = BudgetGoalAdapter(AppData.getBudgetGoals().toMutableList()) { goal ->
+            AppData.removeBudgetGoal(goal.category)
+            refreshList()
+        }
+        rv.layoutManager = LinearLayoutManager(requireContext())
+        rv.adapter = adapter
+
+        btnAdd.setOnClickListener {
+            val limitStr = etLimit.text.toString().trim()
+            val category = spinner.selectedItem.toString()
+            when {
+                limitStr.isEmpty() -> etLimit.error = "Enter a limit amount"
+                limitStr.toDoubleOrNull() == null || limitStr.toDouble() <= 0 ->
+                    etLimit.error = "Enter a valid amount"
+                else -> {
+                    AppData.addOrUpdateBudgetGoal(category, limitStr.toDouble())
+                    etLimit.text.clear()
+                    Toast.makeText(requireContext(), "Budget goal saved!", Toast.LENGTH_SHORT).show()
+                    refreshList()
+                }
+            }
+        }
+    }
+
+    private fun refreshList() {
+        adapter.updateData(AppData.getBudgetGoals())
+    }
+}
