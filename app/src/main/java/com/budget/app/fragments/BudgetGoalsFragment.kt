@@ -15,15 +15,17 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.budget.app.R
+import com.budget.app.activities.MainActivity
 import com.budget.app.adapters.BudgetGoalAdapter
 import com.budget.app.utils.AppData
 import com.budget.app.utils.CurrencyFormatter
 import com.google.android.material.textfield.TextInputLayout
 
-class BudgetGoalsFragment : Fragment() {
+class BudgetGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private lateinit var adapter: BudgetGoalAdapter
     private lateinit var tvLeftToAllocate: TextView
+    private lateinit var rv: RecyclerView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_budget_goals, container, false)
@@ -36,7 +38,7 @@ class BudgetGoalsFragment : Fragment() {
         val etCustom         = view.findViewById<EditText>(R.id.etCustomBudget)
         val etLimit          = view.findViewById<EditText>(R.id.etBudgetLimit)
         val btnAdd           = view.findViewById<Button>(R.id.btnAddBudget)
-        val rv               = view.findViewById<RecyclerView>(R.id.rvBudgetGoals)
+        rv                   = view.findViewById(R.id.rvBudgetGoals)
         tvLeftToAllocate     = view.findViewById(R.id.tvLeftToAllocate)
 
         // Category spinner
@@ -89,6 +91,14 @@ class BudgetGoalsFragment : Fragment() {
         }
 
         refreshUI()
+    }
+
+    override fun onBackPressed(): Boolean {
+        if (::rv.isInitialized && rv.computeVerticalScrollOffset() > 0) {
+            rv.smoothScrollToPosition(0)
+            return true
+        }
+        return false
     }
 
     private fun refreshUI() {

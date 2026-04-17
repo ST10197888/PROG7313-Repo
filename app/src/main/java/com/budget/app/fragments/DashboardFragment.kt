@@ -4,10 +4,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
+import androidx.cardview.widget.CardView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -21,7 +22,9 @@ import com.budget.app.utils.CurrencyFormatter
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.util.Calendar
 
-class DashboardFragment : Fragment() {
+class DashboardFragment : Fragment(), MainActivity.OnBackPressedListener {
+
+    private lateinit var scrollView: ScrollView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_dashboard, container, false)
@@ -29,6 +32,9 @@ class DashboardFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        scrollView = view.findViewById(R.id.scrollView)
+
+        // Basic Views
         val tvWelcome      = view.findViewById<TextView>(R.id.tvWelcome)
         val tvBalance      = view.findViewById<TextView>(R.id.tvBalance)
         val tvIncome       = view.findViewById<TextView>(R.id.tvIncome)
@@ -40,64 +46,79 @@ class DashboardFragment : Fragment() {
         val layoutChart    = view.findViewById<LinearLayout>(R.id.layoutBarChart)
         val rvRecent       = view.findViewById<RecyclerView>(R.id.rvRecentTransactions)
         val fabAdd         = view.findViewById<FloatingActionButton>(R.id.fabAdd)
-        val tvReportHeader = view.findViewById<TextView>(R.id.tvReportHeader)
+        val tvSeeAll       = view.findViewById<TextView>(R.id.tvSeeAll)
 
+        // Quick Actions
+        val cardActionAdd          = view.findViewById<CardView>(R.id.cardActionAdd)
+        val cardActionTransactions = view.findViewById<CardView>(R.id.cardActionTransactions)
+        val cardActionBudget       = view.findViewById<CardView>(R.id.cardActionBudget)
+        val cardActionReports      = view.findViewById<CardView>(R.id.cardActionReports)
+
+        // More Features
+        val cardGoals       = view.findViewById<CardView>(R.id.cardGoals)
+        val cardDebts       = view.findViewById<CardView>(R.id.cardDebts)
+        val cardCategories  = view.findViewById<CardView>(R.id.cardCategories)
+        val cardEducation   = view.findViewById<CardView>(R.id.cardEducation)
+        val cardAttachments = view.findViewById<CardView>(R.id.cardAttachments)
+
+        // Set Data
         val name = AppData.currentUser?.name ?: ""
         tvWelcome.text  = "Hello $name"
         tvBalance.text  = CurrencyFormatter.format(AppData.getBalance())
         tvIncome.text   = CurrencyFormatter.format(AppData.getTotalIncome())
         tvExpenses.text = CurrencyFormatter.format(AppData.getTotalExpenses())
         
-        // Zero-Based Budgeting: Left to Allocate
         tvUnallocated.text = CurrencyFormatter.format(AppData.getUnallocatedIncome())
 
-        // Financial Fitness Dashboard
         val score = AppData.getFinancialFitnessScore()
         pbFitness.progress = score.toInt()
         tvFitnessScore.text = "${score.toInt()}%"
 
-        // Gamification: Badges
         updateBadges(layoutBadges)
-
-        tvReportHeader.text = "This Month vs Last Month"
         setupMiniTripleBar(layoutChart)
 
         val recent = AppData.getAllTransactions().take(5)
         rvRecent.layoutManager = LinearLayoutManager(requireContext())
         rvRecent.adapter = TransactionAdapter(recent, onDelete = null)
 
-        fabAdd.setOnClickListener {
-            (activity as? MainActivity)?.navigateTo(R.id.nav_add)
+        // Click Listeners
+        val main = activity as? MainActivity
+
+        fabAdd.setOnClickListener { main?.navigateTo(R.id.nav_add) }
+        tvSeeAll.setOnClickListener { main?.navigateTo(R.id.nav_transactions) }
+
+        // Quick Action Listeners
+        cardActionAdd.setOnClickListener          { main?.navigateTo(R.id.nav_add) }
+        cardActionTransactions.setOnClickListener { main?.navigateTo(R.id.nav_transactions) }
+        cardActionBudget.setOnClickListener       { main?.navigateTo(R.id.nav_budget_goals) }
+        cardActionReports.setOnClickListener      { main?.navigateTo(R.id.nav_reports) }
+
+        // More Features Listeners
+        cardGoals.setOnClickListener       { main?.navigateTo(R.id.nav_goals) }
+        cardDebts.setOnClickListener       { main?.navigateTo(R.id.nav_debts) }
+        cardCategories.setOnClickListener  { main?.navigateTo(R.id.nav_categories) }
+        cardEducation.setOnClickListener   { main?.navigateTo(R.id.nav_education) }
+        cardAttachments.setOnClickListener { main?.navigateTo(R.id.nav_attachments) }
+    }
+
+    override fun onBackPressed(): Boolean {
+        if (::scrollView.isInitialized && scrollView.scrollY > 0) {
+            scrollView.smoothScrollTo(0, 0)
+            return true
         }
+        return false
     }
 
     private fun updateBadges(container: LinearLayout) {
         container.removeAllViews()
         val unlocked = AppData.getAchievements().filter { it.isUnlocked }
         
-        if (unlocked.isEmpty()) {
-            val tv = TextView(requireContext()).apply {
-                text = "No badges earned yet. Keep going!"
-                textSize = 12f
-                setTextColor(requireContext().getColor(R.color.text_secondary))
-            }
-            container.addView(tv)
-        } else {
-            unlocked.forEach { achievement ->
-                val imageView = ImageView(requireContext()).apply {
-                    val size = (40 * resources.displayMetrics.density).toInt()
-                    layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                        setMargins(0, 0, 16, 0)
-                    }
-                    setImageResource(android.R.drawable.star_on) // Placeholder for badge icon
-                    contentDescription = achievement.title
-                    setOnClickListener {
-                        android.widget.Toast.makeText(requireContext(), "${achievement.title}: ${achievement.description}", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                }
-                container.addView(imageView)
-            }
+        val tv = TextView(requireContext()).apply {
+            text = "🏅 ${unlocked.size}"
+            textSize = 13f
+            setTextColor(requireContext().getColor(R.color.colorPrimary))
         }
+        container.addView(tv)
     }
 
     private fun setupMiniTripleBar(container: LinearLayout) {
@@ -114,7 +135,6 @@ class DashboardFragment : Fragment() {
         val cmData = calculateWeeklyData(AppData.getTransactionsForMonth(cm, cy))
         val maxVal = (lmData + cmData).maxOf { it.max() }.coerceAtLeast(1.0)
 
-        // Outer wrapper — horizontal, fills container
         val wrapper = LinearLayout(requireContext()).apply {
             orientation   = LinearLayout.HORIZONTAL
             layoutParams  = LinearLayout.LayoutParams(
@@ -177,7 +197,6 @@ class DashboardFragment : Fragment() {
                     setMargins(1, 0, 1, 0)
                 }
                 setBackgroundColor(requireContext().getColor(colorRes))
-                // Rounded top feel via alpha on last month bars
                 alpha = if (isCurrentMonth) 1f else 0.5f
             })
         }

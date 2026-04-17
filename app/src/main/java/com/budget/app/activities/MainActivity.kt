@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import android.view.MenuItem
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -11,6 +12,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import com.budget.app.R
 import com.budget.app.fragments.*
 import com.budget.app.utils.AppData
@@ -60,7 +62,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
         // Show dashboard on start
         if (savedInstanceState == null) {
-            loadFragment(DashboardFragment())
+            loadFragment(DashboardFragment(), addToBackStack = false)
         }
 
         bottomNav.setOnItemSelectedListener { item ->
@@ -73,34 +75,65 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             loadFragment(fragment)
             true
         }
+
+        // Handle Back Press
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    return
+                }
+
+                val currentFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainer)
+                if (currentFragment is OnBackPressedListener) {
+                    if (currentFragment.onBackPressed()) {
+                        return // Fragment handled it
+                    }
+                }
+
+                if (supportFragmentManager.backStackEntryCount > 0) {
+                    supportFragmentManager.popBackStack()
+                    supportFragmentManager.executePendingTransactions()
+                    android.os.Handler(android.os.Looper.getMainLooper()).post { updateBottomNavSelection() }
+                } else {
+                    if (currentFragment is DashboardFragment) {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                    } else {
+                        navigateTo(R.id.nav_dashboard)
+                    }
+                }
+            }
+        })
+    }
+
+    private fun updateBottomNavSelection() {
+        val current = supportFragmentManager.findFragmentById(R.id.fragmentContainer)
+        when (current) {
+            is DashboardFragment -> bottomNav.menu.findItem(R.id.nav_dashboard).isChecked = true
+            is AddTransactionFragment -> bottomNav.menu.findItem(R.id.nav_add).isChecked = true
+            is ProfileFragment -> bottomNav.menu.findItem(R.id.nav_profile).isChecked = true
+        }
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
-        val fragment: Fragment = when (item.itemId) {
-            R.id.nav_dashboard    -> { bottomNav.selectedItemId = R.id.nav_dashboard; DashboardFragment() }
-            R.id.nav_transactions -> TransactionsFragment()
-            R.id.nav_add          -> { bottomNav.selectedItemId = R.id.nav_add; AddTransactionFragment() }
-            R.id.nav_attachments  -> AttachmentsFragment()
-            R.id.nav_budget_goals -> BudgetGoalsFragment()
-            R.id.nav_goals        -> FinancialGoalsFragment()
-            R.id.nav_debts        -> DebtReductionFragment()
-            R.id.nav_education    -> EducationFragment()
-            R.id.nav_reports      -> ReportsFragment()
-            R.id.nav_categories   -> CategoriesFragment()
-            R.id.nav_profile      -> { bottomNav.selectedItemId = R.id.nav_profile; ProfileFragment() }
-            R.id.nav_settings     -> SettingsFragment()
-            else -> DashboardFragment()
-        }
-        
-        loadFragment(fragment)
+        navigateTo(item.itemId)
         drawerLayout.closeDrawer(GravityCompat.START)
         return true
     }
 
-    fun loadFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction()
+    fun loadFragment(fragment: Fragment, addToBackStack: Boolean = true) {
+        val current = supportFragmentManager.findFragmentById(R.id.fragmentContainer)
+        if (current?.javaClass == fragment.javaClass) return
+
+        val transaction = supportFragmentManager.beginTransaction()
             .replace(R.id.fragmentContainer, fragment)
-            .commit()
+        
+        if (addToBackStack) {
+            transaction.addToBackStack(fragment.javaClass.simpleName)
+        }
+        
+        transaction.commit()
     }
 
     override fun onPause() {
@@ -108,15 +141,30 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         AppData.saveData(this)
     }
 
-    override fun onBackPressed() {
-        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawer(GravityCompat.START)
-        } else {
-            super.onBackPressed()
+    fun navigateTo(itemId: Int) {
+        // First check if it's a bottom nav item to sync UI
+        if (itemId == R.id.nav_dashboard || itemId == R.id.nav_add || itemId == R.id.nav_profile) {
+            bottomNav.selectedItemId = itemId
+            return
         }
+
+        // Otherwise load manually
+        val fragment: Fragment = when (itemId) {
+            R.id.nav_transactions -> TransactionsFragment()
+            R.id.nav_attachments  -> AttachmentsFragment()
+            R.id.nav_budget_goals -> BudgetGoalsFragment()
+            R.id.nav_goals        -> FinancialGoalsFragment()
+            R.id.nav_debts        -> DebtReductionFragment()
+            R.id.nav_education    -> EducationFragment()
+            R.id.nav_reports      -> ReportFragment()
+            R.id.nav_categories   -> CategoriesFragment()
+            R.id.nav_settings     -> SettingsFragment()
+            else -> DashboardFragment()
+        }
+        loadFragment(fragment)
     }
 
-    fun navigateTo(itemId: Int) {
-        bottomNav.selectedItemId = itemId
+    interface OnBackPressedListener {
+        fun onBackPressed(): Boolean
     }
 }

@@ -8,9 +8,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.budget.app.R
+import com.budget.app.activities.MainActivity
 import com.budget.app.models.TransactionType
 import com.budget.app.utils.AppData
 import com.budget.app.utils.CurrencyFormatter
@@ -18,7 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-class ReportsFragment : Fragment() {
+class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private var selectedMonth = 0
     private var selectedYear  = 0
@@ -31,6 +33,7 @@ class ReportsFragment : Fragment() {
     private lateinit var tvSavingsRate   : TextView
     private lateinit var pbSavingsRate   : ProgressBar
     private lateinit var layoutBarChart  : LinearLayout
+    private lateinit var scrollView      : ScrollView
 
     // Budget Summary views
     private lateinit var tvTotalBudgeted : TextView
@@ -46,6 +49,7 @@ class ReportsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        scrollView       = view.findViewById(R.id.scrollViewReports)
         tvReportIncome   = view.findViewById(R.id.tvReportIncome)
         tvReportExpenses = view.findViewById(R.id.tvReportExpenses)
         tvReportSavings  = view.findViewById(R.id.tvReportSavings)
@@ -83,6 +87,14 @@ class ReportsFragment : Fragment() {
         }
 
         refresh()
+    }
+
+    override fun onBackPressed(): Boolean {
+        if (::scrollView.isInitialized && scrollView.scrollY > 0) {
+            scrollView.smoothScrollTo(0, 0)
+            return true
+        }
+        return false
     }
 
     private fun refresh() {
@@ -288,7 +300,7 @@ class ReportsFragment : Fragment() {
 
         val transactions = AppData.getTransactionsForMonth(month, year)
 
-        // 1. Budget Goals Summary Section
+        // 1. Budget Goal Status
         addSectionHeader("Budget Goal Status (Monthly)")
         val budgetGoals = AppData.getBudgetGoals()
         if (budgetGoals.isEmpty()) {
@@ -355,6 +367,14 @@ class ReportsFragment : Fragment() {
         bar.progress = percent.coerceAtMost(100)
         bar.progressTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(colorRes))
         
+        row.isClickable = true
+        row.isFocusable = true
+        row.setBackgroundResource(android.R.drawable.list_selector_background)
+        row.setOnClickListener {
+            val fragment = AddTransactionFragment.newInstance(TransactionType.EXPENSE, category)
+            (activity as? MainActivity)?.loadFragment(fragment)
+        }
+        
         layoutBreakdown.addView(row)
     }
 
@@ -378,6 +398,14 @@ class ReportsFragment : Fragment() {
             val bar = row.findViewById<ProgressBar>(R.id.pbCategory)
             bar.progress = 100
             bar.progressTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(colorRes))
+            
+            row.isClickable = true
+            row.isFocusable = true
+            row.setBackgroundResource(android.R.drawable.list_selector_background)
+            row.setOnClickListener {
+                val fragment = AddTransactionFragment.newInstance(type, category)
+                (activity as? MainActivity)?.loadFragment(fragment)
+            }
             
             layoutBreakdown.addView(row)
 
@@ -414,8 +442,15 @@ class ReportsFragment : Fragment() {
             
             val bar = row.findViewById<ProgressBar>(R.id.pbCategory)
             bar.progress = percent
-            // Change colorRes to R.color.expense_red (or your preferred color)
             bar.progressTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(R.color.expense_red))
+            
+            row.isClickable = true
+            row.isFocusable = true
+            row.setBackgroundResource(android.R.drawable.list_selector_background)
+            row.setOnClickListener {
+                val fragment = AddTransactionFragment.newInstance(TransactionType.EXPENSE, "Debt Payment")
+                (activity as? MainActivity)?.loadFragment(fragment)
+            }
             
             layoutBreakdown.addView(row)
         }

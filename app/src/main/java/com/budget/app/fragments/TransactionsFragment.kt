@@ -18,7 +18,7 @@ import com.budget.app.adapters.TransactionAdapter
 import com.budget.app.models.Transaction
 import com.budget.app.utils.AppData
 
-class TransactionsFragment : Fragment() {
+class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private lateinit var adapter: TransactionAdapter
     private lateinit var tvEmpty: TextView
@@ -65,6 +65,14 @@ class TransactionsFragment : Fragment() {
         }
 
         refreshList()
+    }
+
+    override fun onBackPressed(): Boolean {
+        if (::rv.isInitialized && rv.computeVerticalScrollOffset() > 0) {
+            rv.smoothScrollToPosition(0)
+            return true
+        }
+        return false
     }
 
     private fun startDeletionProcess(transaction: Transaction) {

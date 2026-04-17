@@ -11,13 +11,15 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.budget.app.R
+import com.budget.app.activities.MainActivity
 import com.budget.app.adapters.FinancialGoalAdapter
 import com.budget.app.utils.AppData
 import java.util.Date
 
-class FinancialGoalsFragment : Fragment() {
+class FinancialGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private lateinit var adapter: FinancialGoalAdapter
+    private lateinit var rv: RecyclerView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_goals, container, false)
@@ -28,7 +30,7 @@ class FinancialGoalsFragment : Fragment() {
         val etName = view.findViewById<EditText>(R.id.etGoalName)
         val etTarget = view.findViewById<EditText>(R.id.etGoalTarget)
         val btnAdd = view.findViewById<Button>(R.id.btnAddGoal)
-        val rv = view.findViewById<RecyclerView>(R.id.rvGoals)
+        rv = view.findViewById(R.id.rvGoals)
 
         adapter = FinancialGoalAdapter(AppData.getFinancialGoals()) { goal ->
             showAddProgressDialog(goal.id)
@@ -50,6 +52,14 @@ class FinancialGoalsFragment : Fragment() {
                 }
             }
         }
+    }
+
+    override fun onBackPressed(): Boolean {
+        if (::rv.isInitialized && rv.computeVerticalScrollOffset() > 0) {
+            rv.smoothScrollToPosition(0)
+            return true
+        }
+        return false
     }
 
     private fun showAddProgressDialog(goalId: Int) {

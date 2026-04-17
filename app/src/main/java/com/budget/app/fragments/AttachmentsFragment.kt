@@ -12,11 +12,14 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.budget.app.R
+import com.budget.app.activities.MainActivity
 import com.budget.app.models.Transaction
 import com.budget.app.utils.AppData
 import com.budget.app.utils.CurrencyFormatter
 
-class AttachmentsFragment : Fragment() {
+class AttachmentsFragment : Fragment(), MainActivity.OnBackPressedListener {
+
+    private lateinit var rv: RecyclerView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_attachments, container, false)
@@ -24,7 +27,7 @@ class AttachmentsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val rv = view.findViewById<RecyclerView>(R.id.rvAttachments)
+        rv = view.findViewById(R.id.rvAttachments)
         val tvEmpty = view.findViewById<TextView>(R.id.tvEmptyAttachments)
 
         val attachments = AppData.getTransactionsWithAttachments()
@@ -40,6 +43,14 @@ class AttachmentsFragment : Fragment() {
                 viewAttachment(transaction)
             }
         }
+    }
+
+    override fun onBackPressed(): Boolean {
+        if (::rv.isInitialized && rv.computeVerticalScrollOffset() > 0) {
+            rv.smoothScrollToPosition(0)
+            return true
+        }
+        return false
     }
 
     private fun viewAttachment(transaction: Transaction) {

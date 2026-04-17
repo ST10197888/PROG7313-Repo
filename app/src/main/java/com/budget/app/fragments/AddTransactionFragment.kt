@@ -21,7 +21,7 @@ import com.budget.app.models.TransactionType
 import com.budget.app.utils.AppData
 import java.util.*
 
-class AddTransactionFragment : Fragment() {
+class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private var selectedAttachmentUri: Uri? = null
     private var selectedAttachmentName: String? = null
@@ -35,6 +35,7 @@ class AddTransactionFragment : Fragment() {
     private lateinit var btnAttach: Button
     private lateinit var tvAttachmentName: TextView
     private lateinit var layoutAttachment: View
+    private var scrollView: ScrollView? = null
 
     // Custom Budget Views
     private lateinit var layoutCustomBudget: View
@@ -60,6 +61,20 @@ class AddTransactionFragment : Fragment() {
     private val FILLED_CHAR         = '█'
     private val EMPTY_CHAR          = '░'
 
+    companion object {
+        private const val ARG_TYPE = "type"
+        private const val ARG_CATEGORY = "category"
+
+        fun newInstance(type: TransactionType? = null, category: String? = null): AddTransactionFragment {
+            val fragment = AddTransactionFragment()
+            val args = Bundle()
+            type?.let { args.putString(ARG_TYPE, it.name) }
+            category?.let { args.putString(ARG_CATEGORY, it) }
+            fragment.arguments = args
+            return fragment
+        }
+    }
+
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val uri = result.data?.data
@@ -84,6 +99,7 @@ class AddTransactionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        scrollView = view.findViewById(R.id.scrollView) ?: findScrollView(view)
         etTitle = view.findViewById(R.id.etTitle)
         etAmount = view.findViewById(R.id.etAmount)
         etNotes = view.findViewById(R.id.etNotes)
@@ -138,8 +154,6 @@ class AddTransactionFragment : Fragment() {
             updateUsageIndicator()
         }
 
-        updateCategories(TransactionType.EXPENSE)
-
         rgType.setOnCheckedChangeListener { _, checkedId ->
             val type = when (checkedId) {
                 R.id.rbIncome -> TransactionType.INCOME
@@ -147,6 +161,30 @@ class AddTransactionFragment : Fragment() {
                 else -> TransactionType.EXPENSE
             }
             updateCategories(type)
+        }
+
+        // Apply Arguments if present
+        val initialTypeStr = arguments?.getString(ARG_TYPE)
+        val initialCategory = arguments?.getString(ARG_CATEGORY)
+
+        if (initialTypeStr != null) {
+            val type = TransactionType.valueOf(initialTypeStr)
+            when (type) {
+                TransactionType.INCOME -> rgType.check(R.id.rbIncome)
+                TransactionType.EXPENSE -> rgType.check(R.id.rbExpense)
+                TransactionType.SAVINGS -> rgType.check(R.id.rbSavings)
+            }
+            updateCategories(type)
+            
+            if (initialCategory != null) {
+                val categories = AppData.getCategoriesForType(type)
+                val index = categories.indexOf(initialCategory)
+                if (index >= 0) {
+                    spinnerCat.setSelection(index)
+                }
+            }
+        } else {
+            updateCategories(TransactionType.EXPENSE)
         }
 
         etAmount.addTextChangedListener(object : TextWatcher {
@@ -170,6 +208,27 @@ class AddTransactionFragment : Fragment() {
                 startTransactionProcessing()
             }
         }
+    }
+
+    private fun findScrollView(view: View): ScrollView? {
+        if (view is ScrollView) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                val child = findScrollView(view.getChildAt(i))
+                if (child != null) return child
+            }
+        }
+        return null
+    }
+
+    override fun onBackPressed(): Boolean {
+        scrollView?.let {
+            if (it.scrollY > 0) {
+                it.smoothScrollTo(0, 0)
+                return true
+            }
+        }
+        return false
     }
 
     private fun updateUsageIndicator() {

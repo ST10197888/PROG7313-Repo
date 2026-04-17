@@ -9,6 +9,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
@@ -18,7 +19,9 @@ import com.budget.app.activities.MainActivity
 import com.budget.app.utils.AppData
 import com.budget.app.utils.CurrencyFormatter
 
-class ProfileFragment : Fragment() {
+class ProfileFragment : Fragment(), MainActivity.OnBackPressedListener {
+
+    private lateinit var scrollView: ScrollView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_profile, container, false)
@@ -26,13 +29,21 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        scrollView = view.findViewById(R.id.scrollViewProfile)
+        
         val tvName              = view.findViewById<TextView>(R.id.tvProfileName)
         val tvEmail             = view.findViewById<TextView>(R.id.tvProfileEmail)
         val tvTxCount           = view.findViewById<TextView>(R.id.tvTxCount)
         val tvTotalSaved        = view.findViewById<TextView>(R.id.tvTotalSaved)
         val tvTotalDebt         = view.findViewById<TextView>(R.id.tvTotalDebt)
+        
         val pbFitness           = view.findViewById<ProgressBar>(R.id.pbProfileFitness)
         val tvFitnessScore      = view.findViewById<TextView>(R.id.tvProfileFitnessScore)
+        val pbFitnessSurplus    = view.findViewById<ProgressBar>(R.id.pbFitnessSurplus)
+        val tvFitnessSurplus    = view.findViewById<TextView>(R.id.tvFitnessSurplusScore)
+        val pbFitnessSavings    = view.findViewById<ProgressBar>(R.id.pbFitnessSavings)
+        val tvFitnessSavings    = view.findViewById<TextView>(R.id.tvFitnessSavingsScore)
+        
         val layoutBadges        = view.findViewById<LinearLayout>(R.id.layoutProfileBadges)
         val tvSummaryIncome     = view.findViewById<TextView>(R.id.tvSummaryIncome)
         val tvSummaryExpenses   = view.findViewById<TextView>(R.id.tvSummaryExpenses)
@@ -58,61 +69,67 @@ class ProfileFragment : Fragment() {
         tvEmail.text      = user?.email ?: ""
         
         val transactions = AppData.getAllTransactions()
-        tvTxCount.text    = "Total Transactions: ${transactions.size}"
-        tvTotalSaved.text = "Remaining balance: ${CurrencyFormatter.format(AppData.getBalance())}"
+        tvTxCount.text    = transactions.size.toString()
         
+        val totalIncome   = AppData.getTotalIncome()
+        val totalExpenses = AppData.getTotalExpenses()
+        val totalSavings  = AppData.getTotalSavings()
+        val balance       = AppData.getBalance()
         val totalDebtValue = AppData.getDebts().sumOf { it.remainingAmount }
-        tvTotalDebt.text  = "Acquired Debt: ${CurrencyFormatter.format(totalDebtValue)}"
 
-        // Financial Fitness
+        tvTotalSaved.text = CurrencyFormatter.format(balance)
+        tvTotalDebt.text  = CurrencyFormatter.format(totalDebtValue)
+        tvSummaryIncome.text   = CurrencyFormatter.format(totalIncome)
+        tvSummaryExpenses.text = CurrencyFormatter.format(totalExpenses)
+        tvSummarySavings.text  = CurrencyFormatter.format(totalSavings)
+        
+        val savingsRate = if (totalIncome > 0) ((totalSavings / totalIncome) * 100).toInt().coerceIn(0, 100) else 0
+        tvSummarySavingsRate.text = "$savingsRate%"
+
+        // ENHANCED Financial Fitness Calculation Logic Mirroring AppData
         val fitnessScore = AppData.getFinancialFitnessScore()
         pbFitness.progress = fitnessScore.toInt()
-        tvFitnessScore.text = "Score: ${fitnessScore.toInt()}%"
+        tvFitnessScore.text = "Total Score: ${fitnessScore.toInt()}%"
+
+        if (totalIncome > 0) {
+            val surplusRatio = ((totalIncome - totalExpenses) / totalIncome).coerceIn(0.0, 1.0)
+            val surplusScore = surplusRatio * 70.0
+            pbFitnessSurplus.progress = surplusScore.toInt()
+            tvFitnessSurplus.text = "${surplusScore.toInt()}/70"
+
+            val savingsRatio = (totalSavings / totalIncome) / 0.20
+            val savingsScore = (savingsRatio * 30.0).coerceAtMost(30.0)
+            pbFitnessSavings.progress = savingsScore.toInt()
+            tvFitnessSavings.text = "${savingsScore.toInt()}/30"
+        } else {
+            pbFitnessSurplus.progress = 0
+            tvFitnessSurplus.text = "0/70"
+            pbFitnessSavings.progress = 0
+            tvFitnessSavings.text = "0/30"
+        }
 
         // Update Usage Block
-        val incomeValue   = AppData.getTotalIncome()
-        val expensesValue = AppData.getTotalExpenses()
-        val savingsValue  = AppData.getTotalSavings()
-        val totalVolume   = incomeValue + expensesValue + savingsValue + totalDebtValue
-
-        tvUsageTotalAmount.text = "100% - ${CurrencyFormatter.format(totalVolume)}"
-        pbUsageTotal.progress = 100 // Baseline is always 100%
+        val totalVolume   = totalIncome + totalExpenses + totalSavings + totalDebtValue
+        tvUsageTotalAmount.text = CurrencyFormatter.format(totalVolume)
+        pbUsageTotal.progress = 100
 
         if (totalVolume > 0) {
-            val incPercent = ((incomeValue / totalVolume) * 100).toInt()
-            val expPercent = ((expensesValue / totalVolume) * 100).toInt()
-            val savPercent = ((savingsValue / totalVolume) * 100).toInt()
+            val incPercent = ((totalIncome / totalVolume) * 100).toInt()
+            val expPercent = ((totalExpenses / totalVolume) * 100).toInt()
+            val savPercent = ((totalSavings / totalVolume) * 100).toInt()
             val debtPercent = ((totalDebtValue / totalVolume) * 100).toInt()
 
             tvUsageIncomePercent.text = "$incPercent%"
             pbUsageIncome.progress = incPercent
-
             tvUsageExpensePercent.text = "$expPercent%"
             pbUsageExpense.progress = expPercent
-
             tvUsageSavingsPercent.text = "$savPercent%"
             pbUsageSavings.progress = savPercent
-
             tvUsageDebtPercent.text = "$debtPercent%"
             pbUsageDebt.progress = debtPercent
-        } else {
-            listOf(tvUsageIncomePercent, tvUsageExpensePercent, tvUsageSavingsPercent, tvUsageDebtPercent).forEach { it.text = "0%" }
-            listOf(pbUsageIncome, pbUsageExpense, pbUsageSavings, pbUsageDebt).forEach { it.progress = 0 }
         }
 
-        // Badges
         updateBadges(layoutBadges)
-
-        // Financial Summary Data
-        val income   = AppData.getTotalIncome()
-        val expenses = AppData.getTotalExpenses()
-        val savings  = AppData.getTotalSavings()
-        val savingsRate = if (income > 0) ((savings / income) * 100).toInt().coerceIn(0, 100) else 0
-
-        tvSummaryIncome.text   = CurrencyFormatter.format(income)
-        tvSummaryExpenses.text = CurrencyFormatter.format(expenses)
-        tvSummarySavings.text  = CurrencyFormatter.format(savings)
-        tvSummarySavingsRate.text = "Overall Savings Rate: $savingsRate%"
 
         btnSettings.setOnClickListener {
             (activity as? MainActivity)?.loadFragment(SettingsFragment())
@@ -132,13 +149,21 @@ class ProfileFragment : Fragment() {
         }
     }
 
+    override fun onBackPressed(): Boolean {
+        if (::scrollView.isInitialized && scrollView.scrollY > 0) {
+            scrollView.smoothScrollTo(0, 0)
+            return true
+        }
+        return false
+    }
+
     private fun updateBadges(container: LinearLayout) {
         container.removeAllViews()
         val unlocked = AppData.getAchievements().filter { it.isUnlocked }
         
         if (unlocked.isEmpty()) {
             val tv = TextView(requireContext()).apply {
-                text = "No badges earned yet. Start managing your budget to unlock achievements!"
+                text = "No badges earned yet."
                 textSize = 14f
                 setTextColor(requireContext().getColor(R.color.text_secondary))
             }
@@ -178,10 +203,8 @@ class ProfileFragment : Fragment() {
 
                 textLayout.addView(title)
                 textLayout.addView(desc)
-                
                 badgeLayout.addView(icon)
                 badgeLayout.addView(textLayout)
-                
                 container.addView(badgeLayout)
             }
         }

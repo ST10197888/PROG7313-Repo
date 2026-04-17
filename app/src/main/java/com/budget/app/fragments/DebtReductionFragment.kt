@@ -10,12 +10,14 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.budget.app.R
+import com.budget.app.activities.MainActivity
 import com.budget.app.adapters.DebtAdapter
 import com.budget.app.utils.AppData
 
-class DebtReductionFragment : Fragment() {
+class DebtReductionFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private lateinit var adapter: DebtAdapter
+    private lateinit var rv: RecyclerView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_debts, container, false)
@@ -28,7 +30,7 @@ class DebtReductionFragment : Fragment() {
         val etRate = view.findViewById<EditText>(R.id.etDebtRate)
         val etMinPay = view.findViewById<EditText>(R.id.etDebtMinPay)
         val btnAdd = view.findViewById<Button>(R.id.btnAddDebt)
-        val rv = view.findViewById<RecyclerView>(R.id.rvDebts)
+        rv = view.findViewById(R.id.rvDebts)
 
         adapter = DebtAdapter(AppData.getDebts()) { debt ->
             showPaymentDialog(debt.id)
@@ -51,6 +53,14 @@ class DebtReductionFragment : Fragment() {
                 refreshList()
             }
         }
+    }
+
+    override fun onBackPressed(): Boolean {
+        if (::rv.isInitialized && rv.computeVerticalScrollOffset() > 0) {
+            rv.smoothScrollToPosition(0)
+            return true
+        }
+        return false
     }
 
     private fun showPaymentDialog(debtId: Int) {

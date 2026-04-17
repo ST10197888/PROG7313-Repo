@@ -2,6 +2,7 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/scrollViewProfile"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_grey">
@@ -57,7 +58,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Financial Fitness Stats Card -->
+        <!-- ENHANCED Financial Fitness Card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -75,7 +76,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Financial Fitness"
+                    android:text="Financial Fitness Score"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary"
@@ -85,24 +86,92 @@
                     android:id="@+id/pbProfileFitness"
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="12dp"
                     android:progress="0"
                     android:max="100"
-                    android:progressTint="@color/colorPrimary" />
+                    android:progressTint="@color/colorPrimary"
+                    android:layout_marginBottom="8dp" />
 
                 <TextView
                     android:id="@+id/tvProfileFitnessScore"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Score: 0%"
-                    android:textSize="14sp"
+                    android:text="Total Score: 0%"
+                    android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:layout_marginTop="4dp" />
+                    android:textColor="@color/colorPrimary" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#EEE"
+                    android:layout_marginVertical="12dp" />
+
+                <!-- Component 1: Surplus -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="4dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Budget Discipline (Income vs Expense)"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_secondary" />
+                    <TextView
+                        android:id="@+id/tvFitnessSurplusScore"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0/70"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+                <ProgressBar
+                    android:id="@+id/pbFitnessSurplus"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:progress="0"
+                    android:max="70"
+                    android:progressTint="@color/income_green"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Component 2: Savings -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="4dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Savings Momentum (Target 20%)"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_secondary" />
+                    <TextView
+                        android:id="@+id/tvFitnessSavingsScore"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0/30"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+                <ProgressBar
+                    android:id="@+id/pbFitnessSavings"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:progress="0"
+                    android:max="30"
+                    android:progressTint="@color/colorPrimary" />
+
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Stats card -->
+        <!-- COMBINED Stats card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -120,37 +189,58 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="My Stats"
+                    android:text="My Financial Stats"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary"
-                    android:layout_marginBottom="12dp" />
+                    android:layout_marginBottom="16dp" />
 
-                <TextView
-                    android:id="@+id/tvTxCount"
-                    android:layout_width="wrap_content"
+                <!-- Key Metrics -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Total Transactions: 0"
-                    android:textSize="14sp"
-                    android:textColor="@color/text_secondary"
-                    android:layout_marginBottom="6dp" />
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
+                    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Transactions" android:textSize="11sp" android:textColor="@color/text_secondary"/>
+                        <TextView android:id="@+id/tvTxCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textStyle="bold" android:textSize="15sp"/>
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Savings Rate" android:textSize="11sp" android:textColor="@color/text_secondary"/>
+                        <TextView android:id="@+id/tvSummarySavingsRate" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0%" android:textStyle="bold" android:textSize="15sp" android:textColor="@color/colorPrimary"/>
+                    </LinearLayout>
+                </LinearLayout>
 
-                <TextView
-                    android:id="@+id/tvTotalSaved"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Remaining balance: R 0.00"
-                    android:textSize="14sp"
-                    android:textColor="@color/text_secondary"
-                    android:layout_marginBottom="6dp" />
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#F0F0F0" android:layout_marginBottom="16dp"/>
 
-                <TextView
-                    android:id="@+id/tvTotalDebt"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Acquired Debt: R 0.00"
-                    android:textSize="14sp"
-                    android:textColor="@color/text_secondary" />
+                <!-- Detailed Totals -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Total Income" android:textSize="14sp" android:textColor="@color/text_secondary"/>
+                    <TextView android:id="@+id/tvSummaryIncome" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="R 0.00" android:textStyle="bold" android:textColor="@color/income_green"/>
+                </LinearLayout>
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Total Expenses" android:textSize="14sp" android:textColor="@color/text_secondary"/>
+                    <TextView android:id="@+id/tvSummaryExpenses" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="R 0.00" android:textStyle="bold" android:textColor="@color/expense_red"/>
+                </LinearLayout>
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Total Savings" android:textSize="14sp" android:textColor="@color/text_secondary"/>
+                    <TextView android:id="@+id/tvSummarySavings" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="R 0.00" android:textStyle="bold" android:textColor="@color/colorPrimary"/>
+                </LinearLayout>
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Debt Balance" android:textSize="14sp" android:textColor="@color/text_secondary"/>
+                    <TextView android:id="@+id/tvTotalDebt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="R 0.00" android:textStyle="bold" android:textColor="#E65100"/>
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#F0F0F0" android:layout_marginVertical="12dp"/>
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Available Balance" android:textStyle="bold" android:textColor="@color/text_primary"/>
+                    <TextView android:id="@+id/tvTotalSaved" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="R 0.00" android:textStyle="bold" android:textColor="@color/income_green" android:textSize="16sp"/>
+                </LinearLayout>
+
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -172,7 +262,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Usage"
+                    android:text="Usage Distribution"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary"
@@ -188,14 +278,14 @@
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
-                        android:text="Total amount put into the app"
+                        android:text="Total cash handled"
                         android:textSize="13sp"
                         android:textColor="@color/text_secondary" />
                     <TextView
                         android:id="@+id/tvUsageTotalAmount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="100% - R 0.00"
+                        android:text="R 0.00"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="@color/income_green" />
@@ -361,113 +451,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Report Summary Card -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@color/card_background">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Financial Summary"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:layout_marginBottom="12dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:layout_height="wrap_content"
-                        android:text="Total Income:"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary" />
-                    <TextView
-                        android:id="@+id/tvSummaryIncome"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="R 0.00"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/income_green" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:layout_height="wrap_content"
-                        android:text="Total Expenses:"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary" />
-                    <TextView
-                        android:id="@+id/tvSummaryExpenses"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="R 0.00"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/expense_red" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:layout_height="wrap_content"
-                        android:text="Total Savings:"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary" />
-                    <TextView
-                        android:id="@+id/tvSummarySavings"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="R 0.00"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/colorPrimary" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/background_grey"
-                    android:layout_marginVertical="8dp" />
-
-                <TextView
-                    android:id="@+id/tvSummarySavingsRate"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Savings Rate: 0%"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
