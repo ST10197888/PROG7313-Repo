@@ -35,7 +35,7 @@ class RegisterActivity : AppCompatActivity() {
                 !email.contains("@")    -> etEmail.error = "Enter a valid email"
                 pass.length < 6         -> etPassword.error = "Password must be at least 6 characters"
                 pass != confirm         -> etConfirm.error = "Passwords do not match"
-                !AppData.register(name, email, pass) ->
+                !AppData.register(name, email, pass, this) ->
                     Toast.makeText(this, "Email already registered", Toast.LENGTH_SHORT).show()
                 else -> {
                     Toast.makeText(this, "Account created! Please log in.", Toast.LENGTH_SHORT).show()

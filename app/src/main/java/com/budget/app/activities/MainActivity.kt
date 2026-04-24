@@ -13,6 +13,7 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
+import android.widget.Toast
 import com.budget.app.R
 import com.budget.app.fragments.*
 import com.budget.app.utils.AppData
@@ -23,6 +24,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var bottomNav: BottomNavigationView
+
+    private var backPressedTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Load Dark Mode Preference
@@ -97,8 +100,12 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     android.os.Handler(android.os.Looper.getMainLooper()).post { updateBottomNavSelection() }
                 } else {
                     if (currentFragment is DashboardFragment) {
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
+                        if (System.currentTimeMillis() - backPressedTime < 2000) {
+                            moveTaskToBack(true)
+                        } else {
+                            backPressedTime = System.currentTimeMillis()
+                            Toast.makeText(this@MainActivity, "Press back again to exit", Toast.LENGTH_SHORT).show()
+                        }
                     } else {
                         navigateTo(R.id.nav_dashboard)
                     }

@@ -141,7 +141,7 @@ class SettingsFragment : Fragment() {
 
     private fun completeWiping() {
         // Clear data
-        AppData.getAllTransactions().toList().forEach { AppData.removeTransaction(it.id) }
+        AppData.getAllTransactions().toList().forEach { AppData.removeTransaction(it.id, requireContext()) }
         AppData.getBudgetGoals().toList().forEach { AppData.removeBudgetGoal(it.category) }
         
         // Force Logout

@@ -18,11 +18,14 @@ data class Transaction(
 
 data class BudgetGoal(
     val category: String,
-    var limitAmount: Double,
+    var limitAmount: Double,          // maximum monthly goal
+    var minAmount: Double = 0.0,      // minimum monthly goal (Kennedy added)
     var spentAmount: Double = 0.0
 ) {
     val remainingAmount: Double get() = limitAmount - spentAmount
     val percentageUsed: Int get() = if (limitAmount > 0) ((spentAmount / limitAmount) * 100).toInt().coerceAtMost(100) else 0
+    val isBelowMinimum: Boolean get() = minAmount > 0 && spentAmount < minAmount
+    val isAboveMaximum: Boolean get() = spentAmount > limitAmount
 }
 
 data class FinancialGoal(

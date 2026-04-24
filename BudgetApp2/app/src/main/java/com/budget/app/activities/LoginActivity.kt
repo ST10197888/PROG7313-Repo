@@ -28,9 +28,11 @@ class LoginActivity : AppCompatActivity() {
             when {
                 email.isEmpty() -> etEmail.error = "Enter your email"
                 pass.isEmpty()  -> etPassword.error = "Enter your password"
-                AppData.login(email, pass) -> {
+                if (AppData.login(email, password, this)) {
+                    AppData.loadUserData(this)
                     startActivity(Intent(this, MainActivity::class.java))
                     finish()
+                    }
                 }
                 else -> Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
             }

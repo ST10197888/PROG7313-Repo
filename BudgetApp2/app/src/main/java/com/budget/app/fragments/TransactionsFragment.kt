@@ -123,7 +123,7 @@ class TransactionsFragment : Fragment() {
 
     private fun completeDeletion() {
         transactionToDelete?.let {
-            AppData.removeTransaction(it.id)
+            AppData.removeTransaction(tx.id, requireContext())
             refreshList()
             Toast.makeText(requireContext(), "Transaction deleted", Toast.LENGTH_SHORT).show()
         }

@@ -1,6 +1,12 @@
 package com.budget.app.utils
 
 import android.content.Context
+import com.budget.app.database.AppDatabase
+import com.budget.app.database.BudgetGoalEntity
+import com.budget.app.database.DebtEntity
+import com.budget.app.database.FinancialGoalEntity
+import com.budget.app.database.TransactionEntity
+import com.budget.app.database.UserEntity
 import com.budget.app.models.*
 import java.util.*
 
@@ -103,12 +109,30 @@ object AppData {
     }
 
     fun init(context: Context) {
-        // Data loading disabled as per user request to remove GSON persistence
+        val db = AppDatabase.getInstance(context)
+        db.userDao().getAll().forEach { entity: UserEntity ->
+            val u = entity.toModel()
+            if (users.none { user -> user.id == u.id }) users.add(u)
+            if (nextUserId <= u.id) nextUserId = u.id + 1
+        }
+        if (users.none { user -> user.email == "seed@budget.com" }) {
+            register("Seed User", "seed@budget.com", "password123")
+        }
+        if (transactions.isEmpty()) {
+            initAchievements()
+        } else {
+            checkAchievements()
+        }
     }
 
-    fun register(name: String, email: String, password: String): Boolean {
+    fun register(name: String, email: String, password: String, context: Context? = null): Boolean {
         if (users.any { it.email.equals(email, ignoreCase = true) }) return false
-        users.add(User(nextUserId++, name, email, password))
+        val user = User(nextUserId++, name, email, password)
+        users.add(user)
+        context?.let {
+            val db = AppDatabase.getInstance(it)
+            db.userDao().insert(UserEntity.fromModel(user))
+        }
         return true
     }
 
@@ -125,7 +149,7 @@ object AppData {
 
     fun logout() { currentUser = null }
 
-    // ── Transactions ──────────────────────────────────────────────────────────
+    // ── Transactions   
     fun addTransaction(
         title: String, amount: Double, type: TransactionType,
         category: String, notes: String = "", date: Date = Date(),
@@ -162,16 +186,16 @@ object AppData {
         return getTransactionsForMonth(month, year)
             .filter { it.type == type }
             .groupBy { it.category }
-            .mapValues { it.value.sumOf { t -> t.amount } }
+            .mapValues { entry -> entry.value.sumOf { t -> t.amount } }
     }
 
     fun getExpensesByCategory(): Map<String, Double> {
         return transactions.filter { it.type == TransactionType.EXPENSE }
             .groupBy { it.category }
-            .mapValues { it.value.sumOf { t -> t.amount } }
+            .mapValues { entry -> entry.value.sumOf { t -> t.amount } }
     }
 
-    // ── Budgeting ─────────────────────────────────────────────────────────────
+    // Budgeting
     fun getBudgetGoals(): List<BudgetGoal> = budgetGoals.toList()
     fun getBudgetGoalForCategory(category: String): BudgetGoal? = budgetGoals.find { it.category == category }
 
@@ -195,7 +219,7 @@ object AppData {
         return getTotalIncome() - totalAllocated
     }
 
-    // ── Goals ─────────────────────────────────────────────────────────────────
+    // Goals
     fun getFinancialGoals() = financialGoals.toList()
     fun getFinancialGoalByName(name: String): FinancialGoal? = financialGoals.find { it.name == name }
 
@@ -207,7 +231,7 @@ object AppData {
         financialGoals.find { it.id == id }?.let { it.currentAmount += amount }
     }
 
-    // ── Debts ─────────────────────────────────────────────────────────────────
+    // Debts
     fun getDebts() = debts.toList()
     fun addDebt(name: String, amount: Double, rate: Double, minPay: Double) {
         debts.add(Debt(debts.size + 1, name, amount, rate, minPay, amount))
@@ -224,7 +248,7 @@ object AppData {
         }
     }
 
-    // ── Fitness Score ─────────────────────────────────────────────────────────
+    // Fitness Score
     fun getFinancialFitnessScore(): Double {
         val income = getTotalIncome()
         if (income <= 0) return 0.0
@@ -243,7 +267,7 @@ object AppData {
         return (surplusScore + savingsScore).coerceIn(0.0, 100.0)
     }
 
-    // ── Gamification ──────────────────────────────────────────────────────────
+    // Gamification
     fun getAchievements() = achievements.toList()
     private fun checkAchievements() {
         if (transactions.isNotEmpty()) unlock("first_tx")
@@ -258,9 +282,55 @@ object AppData {
     }
     private fun unlock(id: String) { achievements.find { it.id == id }?.isUnlocked = true }
 
-    // ── Persistence ───────────────────────────────────────────────────────────
+    // Persistence 
     fun saveData(context: Context) {
-        // Data loading disabled as per user request to remove GSON persistence
+        val user = currentUser ?: return
+        val db = com.budget.app.database.AppDatabase.getInstance(context)
+
+        // Save user
+        db.userDao().insert(com.budget.app.database.UserEntity.fromModel(user))
+
+        // Save transactions
+        transactions.forEach { tx ->
+            db.transactionDao().insert(com.budget.app.database.TransactionEntity.fromModel(tx, user.id))
+        }
+
+        // Save budget goals
+        budgetGoals.forEach { goal ->
+            db.budgetGoalDao().insertOrUpdate(com.budget.app.database.BudgetGoalEntity.fromModel(goal, user.id))
+        }
+
+        // Save financial goals
+        financialGoals.forEach { goal ->
+            db.financialGoalDao().insertOrUpdate(com.budget.app.database.FinancialGoalEntity.fromModel(goal, user.id))
+        }
+
+        // Save debts
+        debts.forEach { debt ->
+            db.debtDao().insertOrUpdate(com.budget.app.database.DebtEntity.fromModel(debt, user.id))
+        }
+    }
+    fun loadUserData(context: Context) {
+        val user = currentUser ?: return
+        val db = com.budget.app.database.AppDatabase.getInstance(context)
+
+        transactions.clear()
+        db.transactionDao().getAllForUser(user.id).forEach { transactions.add(it.toModel()) }
+        if (nextTxId <= (transactions.maxOfOrNull { it.id } ?: 0)) {
+            nextTxId = (transactions.maxOfOrNull { it.id } ?: 0) + 1
+        }
+
+        budgetGoals.clear()
+        db.budgetGoalDao().getAllForUser(user.id).forEach { budgetGoals.add(it.toModel()) }
+
+        financialGoals.clear()
+        db.financialGoalDao().getAllForUser(user.id).forEach { financialGoals.add(it.toModel()) }
+
+        debts.clear()
+        db.debtDao().getAllForUser(user.id).forEach { debts.add(it.toModel()) }
+
+        recalcBudgetGoals()
+        checkAchievements()
     }
 
     fun getCategoriesForType(type: TransactionType): List<String> = when (type) {
