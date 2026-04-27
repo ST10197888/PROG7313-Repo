@@ -23,13 +23,13 @@
                 android:id="@+id/tvWelcome"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Hello"
+                android:text="My Dashboard"
+                android:textColor="@color/text_primary"
                 android:textSize="26sp"
                 android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+                app:layout_constraintTop_toTopOf="parent" />
 
             <!-- Balance Card -->
             <androidx.cardview.widget.CardView

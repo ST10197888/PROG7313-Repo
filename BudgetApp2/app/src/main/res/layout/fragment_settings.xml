@@ -20,11 +20,13 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                android:background="@color/colorPrimary"
                 android:text="Settings"
+                android:textAlignment="center"
+                android:textColor="@color/white"
                 android:textSize="22sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:layout_marginBottom="20dp" />
+                android:textStyle="bold" />
 
             <!-- Preferences card -->
             <androidx.cardview.widget.CardView
@@ -44,10 +46,10 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
                         android:text="Preferences"
-                        android:textSize="14sp"
                         android:textColor="@color/text_secondary"
-                        android:layout_marginBottom="12dp" />
+                        android:textSize="16sp" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -55,13 +57,15 @@
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
                         android:layout_marginBottom="16dp">
+
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Push Notifications"
+                            android:textColor="@color/text_primary"
                             android:textSize="15sp"
-                            android:textColor="@color/text_primary" />
+                            android:textStyle="bold" />
                         <Switch
                             android:id="@+id/switchNotifications"
                             android:layout_width="wrap_content"
@@ -73,13 +77,15 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical">
+
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Dark Mode"
+                            android:textColor="@color/text_primary"
                             android:textSize="15sp"
-                            android:textColor="@color/text_primary" />
+                            android:textStyle="bold" />
                         <Switch
                             android:id="@+id/switchDarkMode"
                             android:layout_width="wrap_content"

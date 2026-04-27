@@ -3,18 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/background_grey"
+    android:orientation="vertical"
     android:padding="16dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Categories"
+        android:layout_marginBottom="24dp"
+        android:background="@color/colorPrimary"
+        android:text="CATEGORIES"
+        android:textAlignment="center"
+        android:textColor="@color/white"
         android:textSize="24sp"
-        android:textStyle="bold"
-        android:textColor="@color/text_primary"
-        android:layout_marginBottom="24dp" />
+        android:textStyle="bold" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -53,9 +55,9 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Expense Categories"
+                            android:textColor="@color/expense_red"
                             android:textSize="18sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/expense_red" />
+                            android:textStyle="bold" />
 
                         <ImageView
                             android:id="@+id/ivArrowExpense"
@@ -69,8 +71,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:visibility="gone"
-                        android:paddingBottom="8dp" />
+                        android:paddingBottom="8dp"
+                        android:visibility="gone" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -100,9 +102,9 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Income Categories"
+                            android:textColor="@color/income_green"
                             android:textSize="18sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/income_green" />
+                            android:textStyle="bold" />
 
                         <ImageView
                             android:id="@+id/ivArrowIncome"
@@ -116,8 +118,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:visibility="gone"
-                        android:paddingBottom="8dp" />
+                        android:paddingBottom="8dp"
+                        android:visibility="gone" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -147,9 +149,9 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Savings Categories"
+                            android:textColor="@color/colorPrimary"
                             android:textSize="18sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/colorPrimary" />
+                            android:textStyle="bold" />
 
                         <ImageView
                             android:id="@+id/ivArrowSavings"
@@ -163,8 +165,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:visibility="gone"
-                        android:paddingBottom="8dp" />
+                        android:paddingBottom="8dp"
+                        android:visibility="gone" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
