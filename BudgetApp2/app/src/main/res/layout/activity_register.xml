@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_grey"
+    android:background="@color/colorPrimary"
     android:fillViewport="true">
 
     <LinearLayout
@@ -12,61 +12,67 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="32dp">
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp"
+        android:paddingTop="52dp"
+        android:paddingBottom="40dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Create Account"
+            android:fontFamily="@font/sans-seriff-bold"
             android:textSize="28sp"
-            android:textStyle="bold"
-            android:textColor="@color/colorPrimary"
-            android:layout_marginBottom="8dp" />
+            android:textColor="#FFFFFF"
+            android:layout_marginBottom="6dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Start your budgeting journey"
+            android:text="Start your financial journey"
+            android:fontFamily="@font/sans-seriff"
             android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginBottom="32dp" />
+            android:textColor="@color/colorPrimary"
+            android:layout_marginBottom="36dp" />
 
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="6dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="12dp"
             app:cardBackgroundColor="@color/white">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="24dp">
+                android:padding="28dp">
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Full Name"
-                    android:layout_marginBottom="12dp"
+                    android:layout_marginBottom="14dp"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:fontFamily="@font/sans-seriff"
                         android:inputType="textPersonName|textCapWords" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Email"
-                    android:layout_marginBottom="12dp"
+                    android:hint="Email address"
+                    android:layout_marginBottom="14dp"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmail"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:fontFamily="@font/sans-seriff-bold"
                         android:inputType="textEmailAddress" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -74,13 +80,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Password"
-                    android:layout_marginBottom="12dp"
+                    android:layout_marginBottom="14dp"
                     app:passwordToggleEnabled="true"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPassword"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:fontFamily="@font/sans-seriff-bold"
                         android:inputType="textPassword" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -88,13 +95,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Confirm Password"
-                    android:layout_marginBottom="20dp"
+                    android:layout_marginBottom="24dp"
                     app:passwordToggleEnabled="true"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etConfirmPassword"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:fontFamily="@font/sans-seriff-bold"
                         android:inputType="textPassword" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -102,10 +110,12 @@
                     android:id="@+id/btnRegister"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
-                    android:text="Register"
-                    android:textSize="16sp"
+                    android:text="Create Account"
+                    android:fontFamily="@font/sans-seriff-bold"
+                    android:textSize="15sp"
                     android:backgroundTint="@color/colorPrimary"
-                    android:textColor="@color/white" />
+                    android:textColor="@color/white"
+                    app:cornerRadius="10dp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -113,9 +123,10 @@
             android:id="@+id/tvLogin"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Already have an account? Log in"
-            android:textColor="@color/colorPrimary"
+            android:text="Already have an account? Sign in"
+            android:fontFamily="@font/sans-seriff-bold"
+            android:textColor="#A8C8E8"
             android:textSize="14sp"
-            android:paddingTop="24dp" />
+            android:paddingTop="28dp" />
     </LinearLayout>
 </ScrollView>
