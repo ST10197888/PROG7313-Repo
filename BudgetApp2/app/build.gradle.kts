@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
 }
-
+//rico's comment
 android {
     namespace = "com.budget.app"
     compileSdk {

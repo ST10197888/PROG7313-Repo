@@ -16,6 +16,8 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
+        AppData.init(this)
+
         val etEmail    = findViewById<EditText>(R.id.etEmail)
         val etPassword = findViewById<EditText>(R.id.etPassword)
         val btnLogin   = findViewById<Button>(R.id.btnLogin)
@@ -28,11 +30,9 @@ class LoginActivity : AppCompatActivity() {
             when {
                 email.isEmpty() -> etEmail.error = "Enter your email"
                 pass.isEmpty()  -> etPassword.error = "Enter your password"
-                if (AppData.login(email, password, this)) {
-                    AppData.loadUserData(this)
+                AppData.login(email, pass, this) -> {
                     startActivity(Intent(this, MainActivity::class.java))
                     finish()
-                    }
                 }
                 else -> Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
             }

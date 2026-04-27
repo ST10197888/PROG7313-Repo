@@ -18,9 +18,14 @@ object AppData {
         register("Seed User", "seed@budget.com", "password123")
     }
 
-    fun register(name: String, email: String, password: String): Boolean {
+    fun register(name: String, email: String, password: String, context: Context? = null): Boolean {
         if (users.any { it.email.equals(email, ignoreCase = true) }) return false
-        users.add(User(nextUserId++, name, email, password))
+        val user = User(nextUserId++, name, email, password)
+        users.add(user)
+        context?.let {
+            val db = AppDatabase.getInstance(it)
+            db.userDao().insert(UserEntity.fromModel(user))
+        }
         return true
     }
 
@@ -35,7 +40,7 @@ object AppData {
 
     fun logout() { currentUser = null }
 
-    // ── Transactions ──────────────────────────────────────────────────────────
+    // Transactions
     private val transactions = mutableListOf<Transaction>()
     private var nextTxId = 1
 
@@ -48,11 +53,15 @@ object AppData {
         recalcBudgetGoals()
     }
 
-    fun removeTransaction(id: Int) {
+    fun removeTransaction(id: Int, context: Context? = null) {
         transactions.removeAll { it.id == id }
+        context?.let {
+            val db = AppDatabase.getInstance(it)
+            db.transactionDao().deleteById(id)
+        }
         recalcBudgetGoals()
+        checkAchievements()
     }
-
     fun getAllTransactions(): List<Transaction> = transactions.sortedByDescending { it.date }
 
     fun getIncomeTransactions(): List<Transaction> = transactions.filter { it.type == TransactionType.INCOME }
@@ -99,7 +108,7 @@ object AppData {
     fun getTransactionsWithAttachments(): List<Transaction> = 
         transactions.filter { it.attachmentUri != null }.sortedByDescending { it.date }
 
-    // ── Budget Goals ──────────────────────────────────────────────────────────
+    // Budget Goals
     private val budgetGoals = mutableListOf<BudgetGoal>()
 
     fun getBudgetGoals(): List<BudgetGoal> = budgetGoals.toList()

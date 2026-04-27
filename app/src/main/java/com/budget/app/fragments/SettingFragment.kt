@@ -15,15 +15,17 @@ import androidx.cardview.widget.CardView
 import androidx.fragment.app.Fragment
 import com.budget.app.R
 import com.budget.app.activities.LoginActivity
+import com.budget.app.activities.MainActivity
 import com.budget.app.utils.AppData
 
-class SettingsFragment : Fragment() {
+class SettingsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private lateinit var overlayContainer: View
     private lateinit var progressBarCard: CardView
     private lateinit var tvProgressBar: TextView
     private lateinit var tvWipingLabel: TextView
     private lateinit var btnCancelWipe: Button
+    private var scrollView: ScrollView? = null
 
     private var wipingTimer: CountDownTimer? = null
 
@@ -32,6 +34,9 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Attempt to find ScrollView in the hierarchy
+        scrollView = view.findViewById(R.id.scrollView) ?: (view as? ScrollView) ?: findScrollView(view)
 
         val switchNotifications = view.findViewById<Switch>(R.id.switchNotifications)
         val switchDarkMode      = view.findViewById<Switch>(R.id.switchDarkMode)
@@ -68,6 +73,27 @@ class SettingsFragment : Fragment() {
             hideOverlay()
             Toast.makeText(requireContext(), "Wiping cancelled", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun findScrollView(view: View): ScrollView? {
+        if (view is ScrollView) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                val child = findScrollView(view.getChildAt(i))
+                if (child != null) return child
+            }
+        }
+        return null
+    }
+
+    override fun onBackPressed(): Boolean {
+        scrollView?.let {
+            if (it.scrollY > 0) {
+                it.smoothScrollTo(0, 0)
+                return true
+            }
+        }
+        return false
     }
 
     private fun showPasswordConfirmationDialog() {
@@ -141,7 +167,7 @@ class SettingsFragment : Fragment() {
 
     private fun completeWiping() {
         // Clear data
-        AppData.getAllTransactions().toList().forEach { AppData.removeTransaction(it.id, requireContext()) }
+        AppData.getAllTransactions().toList().forEach { AppData.removeTransaction(it.id) }
         AppData.getBudgetGoals().toList().forEach { AppData.removeBudgetGoal(it.category) }
         
         // Force Logout
