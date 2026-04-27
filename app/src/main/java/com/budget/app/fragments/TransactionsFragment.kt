@@ -6,9 +6,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.cardview.widget.CardView
+import androidx.core.util.Pair
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -17,12 +19,17 @@ import com.budget.app.activities.MainActivity
 import com.budget.app.adapters.TransactionAdapter
 import com.budget.app.models.Transaction
 import com.budget.app.utils.AppData
+import com.google.android.material.datepicker.MaterialDatePicker
+import java.text.SimpleDateFormat
+import java.util.*
 
 class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private lateinit var adapter: TransactionAdapter
     private lateinit var tvEmpty: TextView
     private lateinit var rv: RecyclerView
+    private lateinit var tvActiveFilter: TextView
+    private lateinit var btnFilter: ImageButton
 
     // Overlay Views
     private lateinit var overlayContainer: View
@@ -33,6 +40,9 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
     private var deletionTimer: CountDownTimer? = null
     private var transactionToDelete: Transaction? = null
 
+    private var startDate: Date? = null
+    private var endDate: Date? = null
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_transactions, container, false)
 
@@ -41,6 +51,8 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
         rv = view.findViewById(R.id.rvTransactions)
         tvEmpty = view.findViewById(R.id.tvEmpty)
+        tvActiveFilter = view.findViewById(R.id.tvActiveFilter)
+        btnFilter = view.findViewById(R.id.btnFilter)
 
         overlayContainer = view.findViewById(R.id.overlayContainer)
         progressBarCard = view.findViewById(R.id.progressBarCard)
@@ -64,7 +76,33 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
             cancelDeletion()
         }
 
+        btnFilter.setOnClickListener {
+            showDatePicker()
+        }
+
         refreshList()
+    }
+
+    private fun showDatePicker() {
+        val builder = MaterialDatePicker.Builder.dateRangePicker()
+        builder.setTitleText("Select Date Range")
+        
+        if (startDate != null && endDate != null) {
+            builder.setSelection(Pair(startDate!!.time, endDate!!.time))
+        }
+
+        val picker = builder.build()
+        picker.addOnPositiveButtonClickListener { selection ->
+            startDate = Date(selection.first)
+            endDate = Date(selection.second)
+            refreshList()
+        }
+        picker.addOnNegativeButtonClickListener {
+            startDate = null
+            endDate = null
+            refreshList()
+        }
+        picker.show(childFragmentManager, "date_picker")
     }
 
     override fun onBackPressed(): Boolean {
@@ -140,9 +178,18 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
     }
 
     private fun refreshList() {
-        val list = AppData.getAllTransactions()
+        val list = AppData.getFilteredTransactions(startDate, endDate)
         adapter.updateData(list)
         tvEmpty.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
+        
+        if (startDate != null && endDate != null) {
+            val df = SimpleDateFormat("dd MMM", Locale.getDefault())
+            tvActiveFilter.text = "Filtering: ${df.format(startDate!!)} - ${df.format(endDate!!)}"
+            tvActiveFilter.visibility = View.VISIBLE
+        } else {
+            tvActiveFilter.text = "Filtering: All Time"
+            // tvActiveFilter.visibility = View.GONE // Keep it visible to show current state
+        }
     }
 
     override fun onDestroyView() {

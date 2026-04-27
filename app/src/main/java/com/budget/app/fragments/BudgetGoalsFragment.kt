@@ -36,6 +36,7 @@ class BudgetGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
         val spinner          = view.findViewById<Spinner>(R.id.spinnerBudgetCategory)
         val tilCustom        = view.findViewById<TextInputLayout>(R.id.tilCustomBudget)
         val etCustom         = view.findViewById<EditText>(R.id.etCustomBudget)
+        val etMin            = view.findViewById<EditText>(R.id.etBudgetMin)
         val etLimit          = view.findViewById<EditText>(R.id.etBudgetLimit)
         val btnAdd           = view.findViewById<Button>(R.id.btnAddBudget)
         rv                   = view.findViewById(R.id.rvBudgetGoals)
@@ -63,6 +64,7 @@ class BudgetGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
         rv.adapter = adapter
 
         btnAdd.setOnClickListener {
+            val minStr = etMin.text.toString().trim()
             val limitStr = etLimit.text.toString().trim()
             val selectedCategory = spinner.selectedItem.toString()
             
@@ -72,6 +74,8 @@ class BudgetGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
                 selectedCategory
             }
 
+            val minVal = minStr.toDoubleOrNull() ?: 0.0
+
             when {
                 category.isEmpty() -> {
                     if (selectedCategory == "Other") etCustom.error = "Enter custom budget name"
@@ -80,9 +84,12 @@ class BudgetGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
                 limitStr.isEmpty() -> etLimit.error = "Enter a limit amount"
                 limitStr.toDoubleOrNull() == null || limitStr.toDouble() <= 0 ->
                     etLimit.error = "Enter a valid amount"
+                minVal > (limitStr.toDoubleOrNull() ?: 0.0) ->
+                    etMin.error = "Min cannot be greater than Max"
                 else -> {
-                    AppData.addOrUpdateBudgetGoal(category, limitStr.toDouble())
+                    AppData.addOrUpdateBudgetGoal(category, limitStr.toDouble(), minVal)
                     etLimit.text.clear()
+                    etMin.text.clear()
                     etCustom.text.clear()
                     Toast.makeText(requireContext(), "Budget goal saved!", Toast.LENGTH_SHORT).show()
                     refreshUI()

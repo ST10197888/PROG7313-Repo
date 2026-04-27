@@ -1,10 +1,13 @@
 package com.budget.app.fragments
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.text.Editable
 import android.text.TextWatcher
@@ -14,17 +17,23 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.cardview.widget.CardView
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import com.budget.app.R
 import com.budget.app.activities.MainActivity
 import com.budget.app.models.TransactionType
 import com.budget.app.utils.AppData
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.text.SimpleDateFormat
 import java.util.*
 
 class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private var selectedAttachmentUri: Uri? = null
     private var selectedAttachmentName: String? = null
+    private var photoFile: File? = null
 
     private lateinit var etTitle: EditText
     private lateinit var etAmount: EditText
@@ -75,20 +84,20 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         }
     }
 
-    private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+    private val galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val uri = result.data?.data
             if (uri != null) {
-                val fileSize = getFileSize(uri)
-                if (fileSize > 5 * 1024 * 1024) {
-                    Toast.makeText(requireContext(), "File size exceeds 5MB limit", Toast.LENGTH_LONG).show()
-                } else {
-                    selectedAttachmentUri = uri
-                    selectedAttachmentName = getFileName(uri)
-                    tvAttachmentName.text = selectedAttachmentName
-                    tvAttachmentName.visibility = View.VISIBLE
-                    btnAttach.text = "Change Document"
-                }
+                saveUriToInternalStorage(uri)
+            }
+        }
+    }
+
+    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            photoFile?.let {
+                val uri = Uri.fromFile(it)
+                setAttachment(uri, it.name)
             }
         }
     }
@@ -196,11 +205,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         })
 
         btnAttach.setOnClickListener {
-            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                type = "*/*"
-                addCategory(Intent.CATEGORY_OPENABLE)
-            }
-            filePickerLauncher.launch(intent)
+            showAttachmentOptions()
         }
 
         btnSave.setOnClickListener {
@@ -208,6 +213,73 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
                 startTransactionProcessing()
             }
         }
+    }
+
+    private fun showAttachmentOptions() {
+        val options = arrayOf("Take Photo", "Choose from Gallery", "Cancel")
+        AlertDialog.Builder(requireContext())
+            .setTitle("Add Attachment")
+            .setItems(options) { dialog, which ->
+                when (which) {
+                    0 -> launchCamera()
+                    1 -> launchGallery()
+                    else -> dialog.dismiss()
+                }
+            }
+            .show()
+    }
+
+    private fun launchCamera() {
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        try {
+            photoFile = createImageFile()
+            photoFile?.let {
+                val photoURI = FileProvider.getUriForFile(requireContext(), "com.budget.app.fileprovider", it)
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                cameraLauncher.launch(intent)
+            }
+        } catch (ex: IOException) {
+            Toast.makeText(requireContext(), "Error creating file", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun launchGallery() {
+        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        galleryLauncher.launch(intent)
+    }
+
+    @Throws(IOException::class)
+    private fun createImageFile(): File {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+    }
+
+    private fun saveUriToInternalStorage(uri: Uri) {
+        try {
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            val file = File(storageDir, "GALLERY_${timeStamp}.jpg")
+            
+            inputStream?.use { input ->
+                FileOutputStream(file).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            setAttachment(Uri.fromFile(file), file.name)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Failed to save image", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setAttachment(uri: Uri, name: String) {
+        selectedAttachmentUri = uri
+        selectedAttachmentName = name
+        tvAttachmentName.text = name
+        tvAttachmentName.visibility = View.VISIBLE
+        btnAttach.text = "Change Attachment"
     }
 
     private fun findScrollView(view: View): ScrollView? {
@@ -391,18 +463,22 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
     }
 
     private fun getFileSize(uri: Uri): Long {
-        return requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-            cursor.moveToFirst()
-            cursor.getLong(sizeIndex)
-        } ?: 0L
+        return try {
+            requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                cursor.moveToFirst()
+                cursor.getLong(sizeIndex)
+            } ?: 0L
+        } catch (e: Exception) { 0L }
     }
 
     private fun getFileName(uri: Uri): String {
-        return requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            cursor.moveToFirst()
-            cursor.getString(nameIndex)
-        } ?: "Unknown File"
+        return try {
+            requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                cursor.moveToFirst()
+                cursor.getString(nameIndex)
+            } ?: "Unknown File"
+        } catch (e: Exception) { "Attachment" }
     }
 }

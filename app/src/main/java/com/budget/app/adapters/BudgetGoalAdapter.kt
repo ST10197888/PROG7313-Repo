@@ -23,6 +23,7 @@ class BudgetGoalAdapter(
         val tvSpent     : TextView    = view.findViewById(R.id.tvGoalSpent)
         val tvLimit     : TextView    = view.findViewById(R.id.tvGoalLimit)
         val tvRemaining : TextView    = view.findViewById(R.id.tvGoalRemaining)
+        val tvStatus    : TextView    = view.findViewById(R.id.tvGoalStatus)
         val progressBar : ProgressBar = view.findViewById(R.id.pbGoalProgress)
         val btnDelete   : ImageButton = view.findViewById(R.id.btnDeleteGoal)
     }
@@ -36,17 +37,29 @@ class BudgetGoalAdapter(
         val goal = data[position]
         holder.tvCategory.text  = goal.category
         holder.tvSpent.text     = "Spent: ${CurrencyFormatter.format(goal.spentAmount)}"
-        holder.tvLimit.text     = "Limit: ${CurrencyFormatter.format(goal.limitAmount)}"
-        holder.tvRemaining.text = "Remaining: ${CurrencyFormatter.format(goal.remainingAmount)}"
+        holder.tvLimit.text     = "Max: ${CurrencyFormatter.format(goal.limitAmount)}"
+        
+        val minText = if (goal.minAmount > 0) " (Min: ${CurrencyFormatter.format(goal.minAmount)})" else ""
+        holder.tvRemaining.text = "Remaining: ${CurrencyFormatter.format(goal.remainingAmount)}$minText"
+        
         holder.progressBar.progress = goal.percentageUsed
 
-        // Turn bar red when over 80%
-        val barColor = when {
-            goal.percentageUsed >= 100 -> Color.parseColor("#F44336")
-            goal.percentageUsed >= 80  -> Color.parseColor("#FF9800")
-            else                       -> Color.parseColor("#4CAF50")
+        // Three-state visual indicator
+        val (color, status) = when {
+            goal.isAboveMaximum -> {
+                Pair(Color.parseColor("#F44336"), "Danger: Over Max") // Red
+            }
+            goal.isBelowMinimum -> {
+                Pair(Color.parseColor("#FF9800"), "Warning: Below Min") // Orange/Amber
+            }
+            else -> {
+                Pair(Color.parseColor("#4CAF50"), "Success: Within Range") // Green
+            }
         }
-        holder.progressBar.progressTintList = ColorStateList.valueOf(barColor)
+
+        holder.tvStatus.text = status
+        holder.tvStatus.setTextColor(color)
+        holder.progressBar.progressTintList = ColorStateList.valueOf(color)
 
         holder.btnDelete.setOnClickListener { onDelete(goal) }
     }

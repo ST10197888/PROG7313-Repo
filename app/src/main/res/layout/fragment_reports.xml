@@ -8,47 +8,72 @@
     android:background="@color/background_grey"
     tools:context=".fragments.ReportsFragment">
 
-    <!-- Month Selector -->
+    <!-- Range Selector Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
+        android:orientation="vertical"
         android:padding="16dp"
         android:background="@color/colorPrimary">
 
-        <TextView
-            android:id="@+id/btnPrevMonth"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:text="&lt;"
-            android:textColor="@color/white"
-            android:textSize="24sp"
-            android:gravity="center"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <TextView
-            android:id="@+id/tvMonthLabel"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="January 2024"
-            android:textColor="@color/white"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:gravity="center" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/btnPrevMonth"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="&lt;"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/tvMonthLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="January 2024"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/btnNextMonth"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="&gt;"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <ImageButton
+                android:id="@+id/btnRangeFilter"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_filter"
+                android:tint="@color/white"
+                android:contentDescription="Custom Range" />
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/btnNextMonth"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:text="&gt;"
+            android:id="@+id/tvRangeSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Monthly View"
             android:textColor="@color/white"
-            android:textSize="24sp"
-            android:gravity="center"
-            android:clickable="true"
-            android:focusable="true" />
+            android:textSize="12sp"
+            android:alpha="0.8"
+            android:gravity="center" />
     </LinearLayout>
 
     <ScrollView
@@ -79,7 +104,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Monthly Cash Flow"
+                        android:text="Period Cash Flow"
                         android:textStyle="bold"
                         android:textSize="14sp"
                         android:layout_marginBottom="12dp"/>

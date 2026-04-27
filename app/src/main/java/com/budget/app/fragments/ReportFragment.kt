@@ -6,25 +6,31 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.util.Pair
 import androidx.fragment.app.Fragment
 import com.budget.app.R
 import com.budget.app.activities.MainActivity
 import com.budget.app.models.TransactionType
 import com.budget.app.utils.AppData
 import com.budget.app.utils.CurrencyFormatter
+import com.google.android.material.datepicker.MaterialDatePicker
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
+import java.util.*
 
 class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private var selectedMonth = 0
     private var selectedYear  = 0
+    private var startDate: Date? = null
+    private var endDate: Date? = null
+
     private lateinit var tvMonthLabel    : TextView
+    private lateinit var tvRangeSubtitle : TextView
     private lateinit var layoutGraphs     : LinearLayout
     private lateinit var layoutBreakdown : LinearLayout
     private lateinit var tvReportIncome  : TextView
@@ -57,6 +63,7 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
         pbSavingsRate    = view.findViewById(R.id.pbSavingsRate)
         layoutBreakdown  = view.findViewById(R.id.layoutCategoryBreakdown)
         tvMonthLabel     = view.findViewById(R.id.tvMonthLabel)
+        tvRangeSubtitle  = view.findViewById(R.id.tvRangeSubtitle)
         layoutGraphs     = view.findViewById(R.id.layoutSkylineGraphs)
         layoutBarChart   = view.findViewById(R.id.layoutBarChart)
 
@@ -69,24 +76,50 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
 
         val btnPrev = view.findViewById<TextView>(R.id.btnPrevMonth)
         val btnNext = view.findViewById<TextView>(R.id.btnNextMonth)
+        val btnRange = view.findViewById<ImageButton>(R.id.btnRangeFilter)
 
         val now = Calendar.getInstance()
         selectedMonth = now.get(Calendar.MONTH)
         selectedYear  = now.get(Calendar.YEAR)
 
         btnPrev.setOnClickListener {
+            startDate = null
+            endDate = null
             if (selectedMonth == 0) { selectedMonth = 11; selectedYear-- }
             else selectedMonth--
             refresh()
         }
 
         btnNext.setOnClickListener {
+            startDate = null
+            endDate = null
             if (selectedMonth == 11) { selectedMonth = 0; selectedYear++ }
             else selectedMonth++
             refresh()
         }
 
+        btnRange.setOnClickListener {
+            showDatePicker()
+        }
+
         refresh()
+    }
+
+    private fun showDatePicker() {
+        val builder = MaterialDatePicker.Builder.dateRangePicker()
+        builder.setTitleText("Select Custom Period")
+        
+        if (startDate != null && endDate != null) {
+            builder.setSelection(Pair(startDate!!.time, endDate!!.time))
+        }
+
+        val picker = builder.build()
+        picker.addOnPositiveButtonClickListener { selection ->
+            startDate = Date(selection.first)
+            endDate = Date(selection.second)
+            refresh()
+        }
+        picker.show(childFragmentManager, "report_date_picker")
     }
 
     override fun onBackPressed(): Boolean {
@@ -98,13 +131,21 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
     }
 
     private fun refresh() {
-        val cal = Calendar.getInstance()
-        cal.set(Calendar.MONTH, selectedMonth)
-        cal.set(Calendar.YEAR, selectedYear)
-        val monthName = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(cal.time)
-        tvMonthLabel.text = monthName
-
-        val transactions = AppData.getTransactionsForMonth(selectedMonth, selectedYear)
+        val transactions: List<com.budget.app.models.Transaction>
+        
+        if (startDate != null && endDate != null) {
+            val df = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+            tvMonthLabel.text = "${df.format(startDate!!)} - ${df.format(endDate!!)}"
+            tvRangeSubtitle.text = "Custom Range"
+            transactions = AppData.getFilteredTransactions(startDate, endDate)
+        } else {
+            val cal = Calendar.getInstance()
+            cal.set(Calendar.MONTH, selectedMonth)
+            cal.set(Calendar.YEAR, selectedYear)
+            tvMonthLabel.text = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(cal.time)
+            tvRangeSubtitle.text = "Monthly View"
+            transactions = AppData.getTransactionsForMonth(selectedMonth, selectedYear)
+        }
 
         val income   = transactions.filter { it.type == TransactionType.INCOME  }.sumOf { it.amount }
         val expenses = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
@@ -118,16 +159,20 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
         pbSavingsRate.progress = rate
 
         setupWeeklyTracker(layoutBarChart)
-        buildVisualWeeklyGraphs(selectedMonth, selectedYear)
-        setupDetailedBreakdown(selectedMonth, selectedYear)
+        if (startDate == null) {
+            buildVisualWeeklyGraphs(selectedMonth, selectedYear)
+        } else {
+            layoutGraphs.removeAllViews() // Skip skyline for custom ranges for now to keep it simple
+        }
+        setupDetailedBreakdown(transactions)
         updateBudgetSummary(transactions)
     }
 
-    private fun updateBudgetSummary(monthTransactions: List<com.budget.app.models.Transaction>) {
+    private fun updateBudgetSummary(periodTransactions: List<com.budget.app.models.Transaction>) {
         val goals = AppData.getBudgetGoals()
         val totalBudgeted = goals.sumOf { it.limitAmount }
         
-        val spentMap = monthTransactions.filter { it.type == TransactionType.EXPENSE }
+        val spentMap = periodTransactions.filter { it.type == TransactionType.EXPENSE }
             .groupBy { it.category }
             .mapValues { it.value.sumOf { t -> t.amount } }
             
@@ -295,13 +340,11 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 
-    private fun setupDetailedBreakdown(month: Int, year: Int) {
+    private fun setupDetailedBreakdown(transactions: List<com.budget.app.models.Transaction>) {
         layoutBreakdown.removeAllViews()
 
-        val transactions = AppData.getTransactionsForMonth(month, year)
-
         // 1. Budget Goal Status
-        addSectionHeader("Budget Goal Status (Monthly)")
+        addSectionHeader("Budget Goal Status (Period)")
         val budgetGoals = AppData.getBudgetGoals()
         if (budgetGoals.isEmpty()) {
             addEmptyMessage("No budget goals set.")
@@ -318,19 +361,19 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
 
         // 2. Income Breakdown
         addSectionHeader("Income Breakdown")
-        addTypeBreakdown(TransactionType.INCOME, month, year, R.color.income_green)
+        addTypeBreakdown(TransactionType.INCOME, transactions, R.color.income_green)
 
         // 3. Expense Breakdown
         addSectionHeader("Expense Breakdown")
-        addTypeBreakdown(TransactionType.EXPENSE, month, year, R.color.expense_red)
+        addTypeBreakdown(TransactionType.EXPENSE, transactions, R.color.expense_red)
 
         // 4. Savings Breakdown
         addSectionHeader("Savings Breakdown")
-        addTypeBreakdown(TransactionType.SAVINGS, month, year, R.color.colorPrimary)
+        addTypeBreakdown(TransactionType.SAVINGS, transactions, R.color.colorPrimary)
 
         // 5. Debt Breakdown
         addSectionHeader("Debt Breakdown")
-        addDebtBreakdown(month, year)
+        addDebtBreakdown(transactions)
     }
 
     private fun addSectionHeader(title: String) {
@@ -378,9 +421,9 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
         layoutBreakdown.addView(row)
     }
 
-    private fun addTypeBreakdown(type: TransactionType, month: Int, year: Int, colorRes: Int) {
-        val transactions = AppData.getTransactionsForMonth(month, year).filter { it.type == type }
-        val byCategory = transactions.groupBy { it.category }
+    private fun addTypeBreakdown(type: TransactionType, transactions: List<com.budget.app.models.Transaction>, colorRes: Int) {
+        val filtered = transactions.filter { it.type == type }
+        val byCategory = filtered.groupBy { it.category }
 
         if (byCategory.isEmpty()) {
             addEmptyMessage("No $type transactions.")
@@ -421,9 +464,9 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
         }
     }
 
-    private fun addDebtBreakdown(month: Int, year: Int) {
+    private fun addDebtBreakdown(transactions: List<com.budget.app.models.Transaction>) {
         val debts = AppData.getDebts()
-        val debtTxs = AppData.getTransactionsForMonth(month, year).filter { it.category == "Debt Payment" }
+        val debtTxs = transactions.filter { it.category == "Debt Payment" }
 
         if (debts.isEmpty() && debtTxs.isEmpty()) {
             addEmptyMessage("No debt data.")
@@ -457,7 +500,7 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
 
         if (debtTxs.isNotEmpty()) {
             val header = TextView(requireContext()).apply {
-                text = "Monthly Debt Payments:"
+                text = "Period Debt Payments:"
                 textSize = 12f
                 setTypeface(null, Typeface.ITALIC)
                 setPadding(16.dpToPx(), 8.dpToPx(), 0, 4.dpToPx())

@@ -169,6 +169,14 @@ object AppData {
     fun getAllTransactions(): List<Transaction> = transactions.sortedByDescending { it.date }
     fun getTransactionsWithAttachments(): List<Transaction> = transactions.filter { it.attachmentUri != null }
 
+    fun getFilteredTransactions(startDate: Date?, endDate: Date?): List<Transaction> {
+        return if (startDate != null && endDate != null) {
+            transactions.filter { it.date in startDate..endDate }.sortedByDescending { it.date }
+        } else {
+            getAllTransactions()
+        }
+    }
+
     fun getTotalIncome(): Double = transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
     fun getTotalExpenses(): Double = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
     fun getTotalSavings(): Double = transactions.filter { it.type == TransactionType.SAVINGS }.sumOf { it.amount }
@@ -180,6 +188,18 @@ object AppData {
             cal.time = it.date
             cal.get(Calendar.MONTH) == month && cal.get(Calendar.YEAR) == year
         }.sortedByDescending { it.date }
+    }
+
+    fun getTotalsByCategoryInRange(type: TransactionType, startDate: Date?, endDate: Date?): Map<String, Double> {
+        val list = if (startDate != null && endDate != null) {
+            transactions.filter { it.date in startDate..endDate }
+        } else {
+            transactions
+        }
+        return list
+            .filter { it.type == type }
+            .groupBy { it.category }
+            .mapValues { entry -> entry.value.sumOf { t -> t.amount } }
     }
 
     fun getTotalsByCategory(type: TransactionType, month: Int, year: Int): Map<String, Double> {
@@ -199,10 +219,13 @@ object AppData {
     fun getBudgetGoals(): List<BudgetGoal> = budgetGoals.toList()
     fun getBudgetGoalForCategory(category: String): BudgetGoal? = budgetGoals.find { it.category == category }
 
-    fun addOrUpdateBudgetGoal(category: String, limit: Double) {
+    fun addOrUpdateBudgetGoal(category: String, limit: Double, min: Double = 0.0) {
         val existing = budgetGoals.find { it.category == category }
-        if (existing != null) existing.limitAmount = limit
-        else budgetGoals.add(BudgetGoal(category, limit))
+        if (existing != null) {
+            existing.limitAmount = limit
+            existing.minAmount = min
+        }
+        else budgetGoals.add(BudgetGoal(category, limit, min))
         recalcBudgetGoals()
         checkAchievements()
     }
