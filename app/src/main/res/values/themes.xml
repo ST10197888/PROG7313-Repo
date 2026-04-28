@@ -29,6 +29,13 @@
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
     </style>
 
+    <!-- forces the Material date picker to use app blue instead of Material 3 default purple -->
+    <style name="AppDatePicker" parent="ThemeOverlay.MaterialComponents.MaterialCalendar">
+        <item name="colorPrimary">#2196F3</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorOnSurface">#212121</item>
+    </style>
+
     <style name="SummaryCard">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">wrap_content</item>

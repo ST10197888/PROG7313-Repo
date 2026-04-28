@@ -113,11 +113,26 @@ object AppData {
 
     fun getBudgetGoals(): List<BudgetGoal> = budgetGoals.toList()
 
-    fun addOrUpdateBudgetGoal(category: String, limit: Double) {
+    fun addOrUpdateBudgetGoal(context: Context, category: String, limit: Double, min: Double = 0.0) {
         val existing = budgetGoals.find { it.category == category }
-        if (existing != null) existing.limitAmount = limit
-        else budgetGoals.add(BudgetGoal(category, limit))
-        recalcBudgetGoals()
+        val goal = if (existing != null) {
+            existing.limitAmount = limit
+            existing.minAmount = min
+            existing
+        } else {
+            val newGoal = BudgetGoal(category, limit, min)
+            budgetGoals.add(newGoal)
+            newGoal
+        }
+
+        val db = AppDatabase.getInstance(context)
+        currentUser?.let { user ->
+            // This saves it permanently
+            db.budgetGoalDao().insertOrUpdate(BudgetGoalEntity.fromModel(goal, user.id))
+        }
+
+        recalcBudgetGoals() // This updates the 'spentAmount'
+        checkAchievements()
     }
 
     fun removeBudgetGoal(category: String) {
@@ -131,7 +146,7 @@ object AppData {
         }
     }
 
-    // ── Categories ────────────────────────────────────────────────────────────
+    // Categories
     val expenseCategories = listOf(
         "Food & Groceries", "Transport", "Rent / Mortgage", "Electricity & Water",
         "Internet & Phone", "Entertainment", "Clothing", "Healthcare / Medical",

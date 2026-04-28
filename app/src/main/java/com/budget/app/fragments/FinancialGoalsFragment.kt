@@ -45,7 +45,7 @@ class FinancialGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
         rv = view.findViewById(R.id.rvGoals)
 
         adapter = FinancialGoalAdapter(emptyList()) { goal ->
-            showAddProgressDialog(goal.id)
+            showAddProgressDialog(goal)
         }
         rv.layoutManager = LinearLayoutManager(requireContext())
         rv.adapter = adapter
@@ -88,27 +88,46 @@ class FinancialGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
         return false
     }
 
-    private fun showAddProgressDialog(goalId: Int) {
+    private fun showAddProgressDialog(goal: FinancialGoal) {
+        val remaining = goal.targetAmount - goal.currentAmount
+        if (remaining <= 0) {
+            android.widget.Toast.makeText(requireContext(), "Goal already reached!", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val input = EditText(requireContext())
-        input.hint = "Amount to add"
+        input.hint = "Amount to add (max ${String.format("%.2f", remaining)})"
         input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
 
-        AlertDialog.Builder(requireContext())
+        val dialog = AlertDialog.Builder(requireContext())
             .setTitle("Add Progress")
             .setView(input)
-            .setPositiveButton("Add") { _, _ ->
-                val amount = input.text.toString().toDoubleOrNull() ?: 0.0
-                if (amount > 0) {
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        db.financialGoalDao().addProgress(goalId, amount)
-                        withContext(Dispatchers.Main) {
-                            refreshList()
+            .setPositiveButton("Add", null)
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val amount = input.text.toString().toDoubleOrNull()
+                when {
+                    amount == null || amount <= 0 ->
+                        input.error = "Enter a valid amount"
+                    amount > remaining ->
+                        input.error = "Cannot exceed remaining amount (${String.format("%.2f", remaining)})"
+                    else -> {
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            db.financialGoalDao().addProgress(goal.id, amount)
+                            withContext(Dispatchers.Main) {
+                                refreshList()
+                                dialog.dismiss()
+                            }
                         }
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
+
+        dialog.show()
     }
 
     private fun refreshList() {

@@ -8,6 +8,7 @@ import com.budget.app.database.FinancialGoalEntity
 import com.budget.app.database.TransactionEntity
 import com.budget.app.database.UserEntity
 import com.budget.app.models.*
+import com.budget.app.utils.SessionManager
 import java.util.*
 
 object AppData {
@@ -25,6 +26,11 @@ object AppData {
     private val financialGoals = mutableListOf<FinancialGoal>()
     private val debts = mutableListOf<Debt>()
     private val achievements = mutableListOf<Achievement>()
+
+    // Custom categories per type (persisted per user via SharedPrefs)
+    private val customExpenseCategories = mutableListOf<String>()
+    private val customIncomeCategories = mutableListOf<String>()
+    private val customSavingsCategories = mutableListOf<String>()
 
     val expenseCategories = listOf(
         "Food & Groceries", "Transport", "Rent / Mortgage", "Electricity & Water",
@@ -101,7 +107,7 @@ object AppData {
         achievements.add(Achievement("budget_master", "Budget Master", "Set 5 budget goals", 0))
         achievements.add(Achievement("goal_setter", "Goal Setter", "Create your first financial goal", 0))
         achievements.add(Achievement("debt_slayer", "Debt Slayer", "Pay off a debt completely", 0))
-        
+
         // Fitness Score Tiered Achievements
         achievements.add(Achievement("fitness_starter", "Financial Starter", "Reach a fitness score of 50%", 0))
         achievements.add(Achievement("fitness_pro", "Financial Athlete", "Reach a fitness score of 80%", 0))
@@ -115,9 +121,22 @@ object AppData {
             if (users.none { user -> user.id == u.id }) users.add(u)
             if (nextUserId <= u.id) nextUserId = u.id + 1
         }
+
+        // Restore current user session if exists
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val savedUserId = prefs.getInt("current_user_id", -1)
+        if (savedUserId != -1) {
+            currentUser = users.find { it.id == savedUserId }
+            currentUser?.let { SessionManager.setUserId(context, it.id) }
+        }
+
         if (users.none { user -> user.email == "seed@budget.com" }) {
             register("Seed User", "seed@budget.com", "password123")
         }
+
+        // Load saved data for current user if exists
+        loadUserData(context)
+
         if (transactions.isEmpty()) {
             initAchievements()
         } else {
@@ -140,8 +159,11 @@ object AppData {
         val user = users.find { it.email.equals(email, ignoreCase = true) && it.password == password }
         currentUser = user
         if (user != null) {
+            SessionManager.setUserId(context, user.id)
+            loadUserData(context)
+            saveData(context)
             if (user.email == "seed@budget.com" && transactions.isEmpty()) {
-                seedDemoData()
+                seedDemoData(context)
             }
         }
         return user != null
@@ -149,19 +171,42 @@ object AppData {
 
     fun logout() { currentUser = null }
 
-    // ── Transactions   
+    fun saveData(context: Context) {
+        val userId = currentUser?.id ?: return
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putInt("current_user_id", userId)
+            .putStringSet("custom_expense_${userId}", customExpenseCategories.toSet())
+            .putStringSet("custom_income_${userId}", customIncomeCategories.toSet())
+            .putStringSet("custom_savings_${userId}", customSavingsCategories.toSet())
+            .apply()
+    }
+
+    // ── Transactions
     fun addTransaction(
+        context: Context,
         title: String, amount: Double, type: TransactionType,
         category: String, notes: String = "", date: Date = Date(),
         attachmentUri: String? = null, attachmentName: String? = null
     ) {
-        transactions.add(Transaction(nextTxId++, title, amount, type, category, date, notes, attachmentUri, attachmentName))
+        val transaction = Transaction(0, title, amount, type, category, date, notes, attachmentUri, attachmentName)
+
+        // Save to Room DB
+        val db = AppDatabase.getInstance(context)
+        currentUser?.let { user ->
+            val id = db.transactionDao().insert(TransactionEntity.fromModel(transaction, user.id)).toInt()
+            val finalTx = transaction.copy(id = id)
+            transactions.add(finalTx)
+        }
+
         recalcBudgetGoals()
         checkAchievements()
     }
 
-    fun removeTransaction(id: Int) {
+    fun removeTransaction(context: Context, id: Int) {
         transactions.removeAll { it.id == id }
+        val db = AppDatabase.getInstance(context)
+        db.transactionDao().deleteById(id)
         recalcBudgetGoals()
         checkAchievements()
     }
@@ -169,12 +214,9 @@ object AppData {
     fun getAllTransactions(): List<Transaction> = transactions.sortedByDescending { it.date }
     fun getTransactionsWithAttachments(): List<Transaction> = transactions.filter { it.attachmentUri != null }
 
-    fun getFilteredTransactions(startDate: Date?, endDate: Date?): List<Transaction> {
-        return if (startDate != null && endDate != null) {
-            transactions.filter { it.date in startDate..endDate }.sortedByDescending { it.date }
-        } else {
-            getAllTransactions()
-        }
+    fun getFilteredTransactions(start: Date?, end: Date?): List<Transaction> {
+        if (start == null || end == null) return getAllTransactions()
+        return transactions.filter { it.date >= start && it.date <= end }.sortedByDescending { it.date }
     }
 
     fun getTotalIncome(): Double = transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
@@ -190,46 +232,39 @@ object AppData {
         }.sortedByDescending { it.date }
     }
 
-    fun getTotalsByCategoryInRange(type: TransactionType, startDate: Date?, endDate: Date?): Map<String, Double> {
-        val list = if (startDate != null && endDate != null) {
-            transactions.filter { it.date in startDate..endDate }
-        } else {
-            transactions
-        }
-        return list
-            .filter { it.type == type }
-            .groupBy { it.category }
-            .mapValues { entry -> entry.value.sumOf { t -> t.amount } }
-    }
-
-    fun getTotalsByCategory(type: TransactionType, month: Int, year: Int): Map<String, Double> {
-        return getTransactionsForMonth(month, year)
-            .filter { it.type == type }
-            .groupBy { it.category }
-            .mapValues { entry -> entry.value.sumOf { t -> t.amount } }
-    }
-
-    fun getExpensesByCategory(): Map<String, Double> {
-        return transactions.filter { it.type == TransactionType.EXPENSE }
-            .groupBy { it.category }
-            .mapValues { entry -> entry.value.sumOf { t -> t.amount } }
-    }
-
     // Budgeting
     fun getBudgetGoals(): List<BudgetGoal> = budgetGoals.toList()
     fun getBudgetGoalForCategory(category: String): BudgetGoal? = budgetGoals.find { it.category == category }
 
-    fun addOrUpdateBudgetGoal(category: String, limit: Double, min: Double = 0.0) {
+    fun addOrUpdateBudgetGoal(context: Context, category: String, limit: Double, min: Double = 0.0) {
         val existing = budgetGoals.find { it.category == category }
-        if (existing != null) {
+        val goal = if (existing != null) {
             existing.limitAmount = limit
             existing.minAmount = min
+            existing
+        } else {
+            val newGoal = BudgetGoal(category, limit, min)
+            budgetGoals.add(newGoal)
+            newGoal
         }
-        else budgetGoals.add(BudgetGoal(category, limit, min))
+
+        val db = AppDatabase.getInstance(context)
+        currentUser?.let { user ->
+            db.budgetGoalDao().insertOrUpdate(BudgetGoalEntity.fromModel(goal, user.id))
+        }
+
         recalcBudgetGoals()
         checkAchievements()
     }
-    fun removeBudgetGoal(category: String) { budgetGoals.removeAll { it.category == category } }
+
+    fun removeBudgetGoal(context: Context, category: String) {
+        budgetGoals.removeAll { it.category == category }
+        val db = AppDatabase.getInstance(context)
+        currentUser?.let { user ->
+            db.budgetGoalDao().deleteByCategory(category, user.id)
+        }
+    }
+
     private fun recalcBudgetGoals() {
         val byCategory = transactions.filter { it.type == TransactionType.EXPENSE }
             .groupBy { it.category }
@@ -246,28 +281,56 @@ object AppData {
     fun getFinancialGoals() = financialGoals.toList()
     fun getFinancialGoalByName(name: String): FinancialGoal? = financialGoals.find { it.name == name }
 
-    fun addFinancialGoal(name: String, target: Double, deadline: Date) {
-        financialGoals.add(FinancialGoal(financialGoals.size + 1, name, target, 0.0, deadline))
+    fun addFinancialGoal(context: Context, name: String, target: Double, deadline: Date) {
+        val goal = FinancialGoal(0, name, target, 0.0, deadline)
+
+        val db = AppDatabase.getInstance(context)
+        currentUser?.let { user ->
+            val id = db.financialGoalDao().insertOrUpdate(FinancialGoalEntity.fromModel(goal, user.id)).toInt()
+            financialGoals.add(goal.copy(id = id))
+        }
         checkAchievements()
     }
-    fun updateGoalProgress(id: Int, amount: Double) {
-        financialGoals.find { it.id == id }?.let { it.currentAmount += amount }
+
+    fun updateGoalProgress(context: Context, id: Int, amount: Double) {
+        financialGoals.find { it.id == id }?.let {
+            it.currentAmount += amount
+            val db = AppDatabase.getInstance(context)
+            currentUser?.let { user ->
+                db.financialGoalDao().insertOrUpdate(FinancialGoalEntity.fromModel(it, user.id))
+            }
+        }
     }
 
     // Debts
     fun getDebts() = debts.toList()
-    fun addDebt(name: String, amount: Double, rate: Double, minPay: Double) {
-        debts.add(Debt(debts.size + 1, name, amount, rate, minPay, amount))
+    fun addDebt(context: Context, name: String, amount: Double, rate: Double, minPay: Double) {
+        val debt = Debt(0, name, amount, rate, minPay, amount) // Fixed caret
+        val db = AppDatabase.getInstance(context)
+
+        currentUser?.let { user ->
+            // We use a Coroutine or ensure this runs on a background thread if your Room is sync
+            val id = db.debtDao().insertOrUpdate(DebtEntity.fromModel(debt, user.id)).toInt()
+
+            // IMPORTANT: Add to the list so the UI sees it!
+            debts.add(debt.copy(id = id))
+        }
+        checkAchievements()
     }
-    fun recordDebtPayment(id: Int, amount: Double) {
+
+    fun recordDebtPayment(context: Context, id: Int, amount: Double) {
         debts.find { it.id == id }?.let {
             it.remainingAmount -= amount
             if (it.remainingAmount <= 0) {
                 it.remainingAmount = 0.0
                 checkAchievements()
             }
+            val db = AppDatabase.getInstance(context)
+            currentUser?.let { user ->
+                db.debtDao().insertOrUpdate(DebtEntity.fromModel(it, user.id))
+            }
             // Record payment as a transaction for reporting
-            addTransaction("Debt Payment: ${it.name}", amount, TransactionType.EXPENSE, "Debt Payment")
+            addTransaction(context, "Debt Payment: ${it.name}", amount, TransactionType.EXPENSE, "Debt Payment")
         }
     }
 
@@ -275,18 +338,16 @@ object AppData {
     fun getFinancialFitnessScore(): Double {
         val income = getTotalIncome()
         if (income <= 0) return 0.0
-        
+
         val expenses = getTotalExpenses()
         val savings = getTotalSavings()
-        
-        // 70% of score comes from Surplus (Income - Expenses)
+
         val surplusRatio = ((income - expenses) / income).coerceIn(0.0, 1.0)
         val surplusScore = surplusRatio * 70.0
-        
-        // 30% of score comes from Savings Rate (Target 20% of income)
+
         val savingsRatio = (savings / income) / 0.20
         val savingsScore = (savingsRatio * 30.0).coerceAtMost(30.0)
-        
+
         return (surplusScore + savingsScore).coerceIn(0.0, 100.0)
     }
 
@@ -297,7 +358,7 @@ object AppData {
         if (budgetGoals.size >= 5) unlock("budget_master")
         if (financialGoals.isNotEmpty()) unlock("goal_setter")
         if (debts.any { it.remainingAmount <= 0 && it.amount > 0 }) unlock("debt_slayer")
-        
+
         val score = getFinancialFitnessScore()
         if (score >= 50.0) unlock("fitness_starter")
         if (score >= 80.0) unlock("fitness_pro")
@@ -305,43 +366,12 @@ object AppData {
     }
     private fun unlock(id: String) { achievements.find { it.id == id }?.isUnlocked = true }
 
-    // Persistence 
-    fun saveData(context: Context) {
-        val user = currentUser ?: return
-        val db = com.budget.app.database.AppDatabase.getInstance(context)
-
-        // Save user
-        db.userDao().insert(com.budget.app.database.UserEntity.fromModel(user))
-
-        // Save transactions
-        transactions.forEach { tx ->
-            db.transactionDao().insert(com.budget.app.database.TransactionEntity.fromModel(tx, user.id))
-        }
-
-        // Save budget goals
-        budgetGoals.forEach { goal ->
-            db.budgetGoalDao().insertOrUpdate(com.budget.app.database.BudgetGoalEntity.fromModel(goal, user.id))
-        }
-
-        // Save financial goals
-        financialGoals.forEach { goal ->
-            db.financialGoalDao().insertOrUpdate(com.budget.app.database.FinancialGoalEntity.fromModel(goal, user.id))
-        }
-
-        // Save debts
-        debts.forEach { debt ->
-            db.debtDao().insertOrUpdate(com.budget.app.database.DebtEntity.fromModel(debt, user.id))
-        }
-    }
     fun loadUserData(context: Context) {
         val user = currentUser ?: return
-        val db = com.budget.app.database.AppDatabase.getInstance(context)
+        val db = AppDatabase.getInstance(context)
 
         transactions.clear()
         db.transactionDao().getAllForUser(user.id).forEach { transactions.add(it.toModel()) }
-        if (nextTxId <= (transactions.maxOfOrNull { it.id } ?: 0)) {
-            nextTxId = (transactions.maxOfOrNull { it.id } ?: 0) + 1
-        }
 
         budgetGoals.clear()
         db.budgetGoalDao().getAllForUser(user.id).forEach { budgetGoals.add(it.toModel()) }
@@ -352,62 +382,101 @@ object AppData {
         debts.clear()
         db.debtDao().getAllForUser(user.id).forEach { debts.add(it.toModel()) }
 
+        // Restore custom categories for this user
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        customExpenseCategories.clear()
+        customExpenseCategories.addAll(prefs.getStringSet("custom_expense_${user.id}", emptySet()) ?: emptySet())
+        customIncomeCategories.clear()
+        customIncomeCategories.addAll(prefs.getStringSet("custom_income_${user.id}", emptySet()) ?: emptySet())
+        customSavingsCategories.clear()
+        customSavingsCategories.addAll(prefs.getStringSet("custom_savings_${user.id}", emptySet()) ?: emptySet())
+
         recalcBudgetGoals()
         checkAchievements()
     }
 
     fun getCategoriesForType(type: TransactionType): List<String> = when (type) {
-        TransactionType.EXPENSE -> expenseCategories
-        TransactionType.INCOME -> incomeCategories
-        TransactionType.SAVINGS -> savingsCategories
+        TransactionType.EXPENSE -> expenseCategories + customExpenseCategories.sorted()
+        TransactionType.INCOME  -> incomeCategories + customIncomeCategories.sorted()
+        TransactionType.SAVINGS -> savingsCategories + customSavingsCategories.sorted()
     }
 
-    private fun seedDemoData() {
+    fun getCustomCategoriesForType(type: TransactionType): List<String> = when (type) {
+        TransactionType.EXPENSE -> customExpenseCategories.toList()
+        TransactionType.INCOME  -> customIncomeCategories.toList()
+        TransactionType.SAVINGS -> customSavingsCategories.toList()
+    }
+
+    fun isCustomCategory(type: TransactionType, name: String): Boolean =
+        getCustomCategoriesForType(type).contains(name)
+
+    fun addCustomCategory(context: Context, type: TransactionType, name: String): Boolean {
+        val all = getCategoriesForType(type)
+        if (all.any { it.equals(name, ignoreCase = true) }) return false
+        when (type) {
+            TransactionType.EXPENSE -> customExpenseCategories.add(name)
+            TransactionType.INCOME  -> customIncomeCategories.add(name)
+            TransactionType.SAVINGS -> customSavingsCategories.add(name)
+        }
+        saveData(context)
+        return true
+    }
+
+    fun removeCustomCategory(context: Context, type: TransactionType, name: String) {
+        when (type) {
+            TransactionType.EXPENSE -> customExpenseCategories.remove(name)
+            TransactionType.INCOME  -> customIncomeCategories.remove(name)
+            TransactionType.SAVINGS -> customSavingsCategories.remove(name)
+        }
+        saveData(context)
+    }
+
+    private fun seedDemoData(context: Context) {
         val cal = Calendar.getInstance()
         val now = cal.time
-        
+
         cal.add(Calendar.MONTH, -1)
         val prev = cal.time
 
-        // 5 INCOME (3 Current, 2 Previous)
-        addTransaction("Salary", 25000.0, TransactionType.INCOME, "Salary", date = prev)
-        addTransaction("Freelance Project", 5000.0, TransactionType.INCOME, "Freelance / Contract Work", date = prev)
-        addTransaction("Salary", 25000.0, TransactionType.INCOME, "Salary", date = now)
-        addTransaction("Project Bonus", 3000.0, TransactionType.INCOME, "Bonus", date = now)
-        addTransaction("Stock Dividends", 1500.0, TransactionType.INCOME, "Dividends", date = now)
+        // 5 INCOME
+        addTransaction(context, "Salary", 25000.0, TransactionType.INCOME, "Salary", date = prev)
+        addTransaction(context, "Freelance Project", 5000.0, TransactionType.INCOME, "Freelance / Contract Work", date = prev)
+        addTransaction(context, "Salary", 25000.0, TransactionType.INCOME, "Salary", date = now)
+        addTransaction(context, "Project Bonus", 3000.0, TransactionType.INCOME, "Bonus", date = now)
+        addTransaction(context, "Stock Dividends", 1500.0, TransactionType.INCOME, "Dividends", date = now)
 
-        // 5 EXPENSES (2 Current, 3 Previous)
-        addTransaction("Monthly Rent", 8500.0, TransactionType.EXPENSE, "Rent / Mortgage", date = prev)
-        addTransaction("Grocery Shopping", 2200.0, TransactionType.EXPENSE, "Food & Groceries", date = prev)
-        addTransaction("Internet Bill", 600.0, TransactionType.EXPENSE, "Internet & Phone", date = prev)
-        addTransaction("Monthly Rent", 8500.0, TransactionType.EXPENSE, "Rent / Mortgage", date = now)
-        addTransaction("Dinner Out", 800.0, TransactionType.EXPENSE, "Eating Out / Restaurants", date = now)
+        // 5 EXPENSES
+        addTransaction(context, "Monthly Rent", 8500.0, TransactionType.EXPENSE, "Rent / Mortgage", date = prev)
+        addTransaction(context, "Grocery Shopping", 2200.0, TransactionType.EXPENSE, "Food & Groceries", date = prev)
+        addTransaction(context, "Internet Bill", 600.0, TransactionType.EXPENSE, "Internet & Phone", date = prev)
+        addTransaction(context, "Monthly Rent", 8500.0, TransactionType.EXPENSE, "Rent / Mortgage", date = now)
+        addTransaction(context, "Dinner Out", 800.0, TransactionType.EXPENSE, "Eating Out / Restaurants", date = now)
 
-        // 5 SAVINGS (2 Current, 3 Previous)
-        addTransaction("Emergency Fund Contribution", 2000.0, TransactionType.SAVINGS, "Emergency Fund", date = prev)
-        addTransaction("Retirement Savings", 3000.0, TransactionType.SAVINGS, "Retirement Fund", date = prev)
-        addTransaction("Car Fund", 1500.0, TransactionType.SAVINGS, "Car Fund", date = prev)
-        addTransaction("Emergency Fund Contribution", 2000.0, TransactionType.SAVINGS, "Emergency Fund", date = now)
-        addTransaction("Holiday Savings", 2500.0, TransactionType.SAVINGS, "Holiday / Travel Fund", date = now)
+        // 5 SAVINGS
+        addTransaction(context, "Emergency Fund Contribution", 2000.0, TransactionType.SAVINGS, "Emergency Fund", date = prev)
+        addTransaction(context, "Retirement Savings", 3000.0, TransactionType.SAVINGS, "Retirement Fund", date = prev)
+        addTransaction(context, "Car Fund", 1500.0, TransactionType.SAVINGS, "Car Fund", date = prev)
+        addTransaction(context, "Emergency Fund Contribution", 2000.0, TransactionType.SAVINGS, "Emergency Fund", date = now)
+        addTransaction(context, "Holiday Savings", 2500.0, TransactionType.SAVINGS, "Holiday / Travel Fund", date = now)
 
-        // 3 DEBT PAYMENTS (As Expense transactions)
-        addTransaction("Credit Card Payment", 1200.0, TransactionType.EXPENSE, "Debt Payment", date = prev)
-        addTransaction("Personal Loan Payment", 2000.0, TransactionType.EXPENSE, "Debt Payment", date = prev)
-        addTransaction("Credit Card Payment", 1500.0, TransactionType.EXPENSE, "Debt Payment", date = now)
+        // 3 DEBT PAYMENTS
+        addTransaction(context, "Credit Card Payment", 1200.0, TransactionType.EXPENSE, "Debt Payment", date = prev)
+        addTransaction(context, "Personal Loan Payment", 2000.0, TransactionType.EXPENSE, "Debt Payment", date = prev)
+        addTransaction(context, "Credit Card Payment", 1500.0, TransactionType.EXPENSE, "Debt Payment", date = now)
 
         // 4 FINANCIAL GOALS
-        addFinancialGoal("Emergency Fund", 50000.0, Calendar.getInstance().apply { add(Calendar.YEAR, 1) }.time)
-        addFinancialGoal("Retirement Fund", 1000000.0, Calendar.getInstance().apply { add(Calendar.YEAR, 30) }.time)
-        addFinancialGoal("New Car", 150000.0, Calendar.getInstance().apply { add(Calendar.YEAR, 2) }.time)
-        addFinancialGoal("Holiday 2024", 15000.0, Calendar.getInstance().apply { add(Calendar.MONTH, 6) }.time)
+        addFinancialGoal(context, "Emergency Fund", 50000.0, Calendar.getInstance().apply { add(Calendar.YEAR, 1) }.time)
+        addFinancialGoal(context, "Retirement Fund", 1000000.0, Calendar.getInstance().apply { add(Calendar.YEAR, 30) }.time)
+        addFinancialGoal(context, "New Car", 150000.0, Calendar.getInstance().apply { add(Calendar.YEAR, 2) }.time)
+        addFinancialGoal(context, "Holiday 2024", 15000.0, Calendar.getInstance().apply { add(Calendar.MONTH, 6) }.time)
 
         // Update progress for some goals
-        updateGoalProgress(1, 4000.0) // Emergency Fund
-        updateGoalProgress(2, 3000.0) // Retirement
-        updateGoalProgress(3, 1500.0) // New Car
-        updateGoalProgress(4, 2500.0) // Holiday
+        updateGoalProgress(context, financialGoals[0].id, 4000.0)
+        updateGoalProgress(context, financialGoals[1].id, 3000.0)
+        updateGoalProgress(context, financialGoals[2].id, 1500.0)
+        updateGoalProgress(context, financialGoals[3].id, 2500.0)
 
         // 1 Budget Goal
-        addOrUpdateBudgetGoal("Rent / Mortgage", 9000.0)
+        addOrUpdateBudgetGoal(context, "Rent / Mortgage", 9000.0)
     }
 }

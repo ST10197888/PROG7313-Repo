@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.budget.app.R
 import com.budget.app.activities.MainActivity
 import com.budget.app.adapters.BudgetGoalAdapter
+import com.budget.app.models.TransactionType
 import com.budget.app.utils.AppData
 import com.budget.app.utils.CurrencyFormatter
 import com.google.android.material.textfield.TextInputLayout
@@ -43,7 +44,7 @@ class BudgetGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
         tvLeftToAllocate     = view.findViewById(R.id.tvLeftToAllocate)
 
         // Category spinner
-        val catAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, AppData.expenseCategories)
+        val catAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, AppData.getCategoriesForType(TransactionType.EXPENSE))
         catAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = catAdapter
 
@@ -57,7 +58,7 @@ class BudgetGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
         // RecyclerView
         adapter = BudgetGoalAdapter(AppData.getBudgetGoals().toMutableList()) { goal ->
-            AppData.removeBudgetGoal(goal.category)
+            AppData.removeBudgetGoal(requireContext(), goal.category)
             refreshUI()
         }
         rv.layoutManager = LinearLayoutManager(requireContext())
@@ -67,7 +68,7 @@ class BudgetGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
             val minStr = etMin.text.toString().trim()
             val limitStr = etLimit.text.toString().trim()
             val selectedCategory = spinner.selectedItem.toString()
-            
+
             val category = if (selectedCategory == "Other") {
                 etCustom.text.toString().trim()
             } else {
@@ -87,7 +88,7 @@ class BudgetGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
                 minVal > (limitStr.toDoubleOrNull() ?: 0.0) ->
                     etMin.error = "Min cannot be greater than Max"
                 else -> {
-                    AppData.addOrUpdateBudgetGoal(category, limitStr.toDouble(), minVal)
+                    AppData.addOrUpdateBudgetGoal(requireContext(), category, limitStr.toDouble(), minVal)
                     etLimit.text.clear()
                     etMin.text.clear()
                     etCustom.text.clear()

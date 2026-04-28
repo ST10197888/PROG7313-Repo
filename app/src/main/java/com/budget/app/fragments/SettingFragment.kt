@@ -49,7 +49,7 @@ class SettingsFragment : Fragment(), MainActivity.OnBackPressedListener {
         btnCancelWipe = view.findViewById(R.id.btnCancelWipe)
 
         val prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
-        
+
         switchDarkMode.isChecked = prefs.getBoolean("dark_mode", false)
         switchNotifications.isChecked = prefs.getBoolean("notifications", true)
 
@@ -167,14 +167,15 @@ class SettingsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private fun completeWiping() {
         // Clear data
-        AppData.getAllTransactions().toList().forEach { AppData.removeTransaction(it.id) }
-        AppData.getBudgetGoals().toList().forEach { AppData.removeBudgetGoal(it.category) }
-        
+        val context = requireContext()
+        AppData.getAllTransactions().toList().forEach { AppData.removeTransaction(context, it.id) }
+        AppData.getBudgetGoals().toList().forEach { AppData.removeBudgetGoal(context, it.category) }
+
         // Force Logout
         AppData.logout()
-        
+
         Toast.makeText(requireContext(), "All data wiped. Logging out...", Toast.LENGTH_SHORT).show()
-        
+
         // Go to Login
         val intent = Intent(requireContext(), LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

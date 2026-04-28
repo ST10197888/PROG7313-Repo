@@ -93,28 +93,41 @@ class DebtReductionFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private fun showPaymentDialog(debt: Debt) {
         val input = EditText(requireContext())
-        input.hint = "Payment Amount"
+        input.hint = "Payment Amount (min ${String.format("%.2f", debt.minPayment)})"
         input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
 
-        AlertDialog.Builder(requireContext())
+        val dialog = AlertDialog.Builder(requireContext())
             .setTitle("Record Payment")
             .setView(input)
-            .setPositiveButton("Pay") { _, _ ->
-                val payment = input.text.toString().toDoubleOrNull() ?: 0.0
-                if (payment > 0) {
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        // Calculate new remaining amount
-                        val newRemaining = (debt.remainingAmount - payment).coerceAtLeast(0.0)
-                        db.debtDao().updateRemaining(debt.id, newRemaining)
+            .setPositiveButton("Pay", null)
+            .setNegativeButton("Cancel", null)
+            .create()
 
-                        withContext(Dispatchers.Main) {
-                            refreshList()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val payment = input.text.toString().toDoubleOrNull()
+                when {
+                    payment == null || payment <= 0 ->
+                        input.error = "Enter a valid payment amount"
+                    debt.minPayment > 0 && payment < debt.minPayment ->
+                        input.error = "Payment must be at least ${String.format("%.2f", debt.minPayment)}"
+                    payment > debt.remainingAmount ->
+                        input.error = "Payment exceeds remaining balance (${String.format("%.2f", debt.remainingAmount)})"
+                    else -> {
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            val newRemaining = (debt.remainingAmount - payment).coerceAtLeast(0.0)
+                            db.debtDao().updateRemaining(debt.id, newRemaining)
+                            withContext(Dispatchers.Main) {
+                                refreshList()
+                                dialog.dismiss()
+                            }
                         }
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
+
+        dialog.show()
     }
 
     private fun refreshList() {

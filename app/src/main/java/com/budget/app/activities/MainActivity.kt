@@ -143,11 +143,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         transaction.commit()
     }
 
-    override fun onPause() {
-        super.onPause()
-        AppData.saveData(this)
-    }
-
     fun navigateTo(itemId: Int) {
         // First check if it's a bottom nav item to sync UI
         if (itemId == R.id.nav_dashboard || itemId == R.id.nav_add || itemId == R.id.nav_profile) {

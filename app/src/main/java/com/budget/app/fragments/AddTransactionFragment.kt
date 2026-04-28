@@ -138,7 +138,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             spinnerCat.adapter = adapter
             layoutAttachment.visibility = if (type == TransactionType.EXPENSE) View.VISIBLE else View.GONE
-            
+
             // Handle Custom Budgets for Expenses
             if (type == TransactionType.EXPENSE) {
                 val customBudgets = AppData.getBudgetGoals().filter { goal ->
@@ -184,7 +184,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
                 TransactionType.SAVINGS -> rgType.check(R.id.rbSavings)
             }
             updateCategories(type)
-            
+
             if (initialCategory != null) {
                 val categories = AppData.getCategoriesForType(type)
                 val index = categories.indexOf(initialCategory)
@@ -317,7 +317,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
 
         val amountStr = etAmount.text.toString()
         val amount = amountStr.toDoubleOrNull() ?: 0.0
-        
+
         val totalIncome = AppData.getTotalIncome()
         if (totalIncome <= 0) {
             layoutUsageIndicator.visibility = View.GONE
@@ -325,14 +325,14 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         }
 
         layoutUsageIndicator.visibility = View.VISIBLE
-        
+
         val currentOutflow = AppData.getTotalExpenses() + AppData.getTotalSavings()
         val newTotalOutflow = currentOutflow + amount
         val usagePercent = ((newTotalOutflow / totalIncome) * 100).toInt()
-        
+
         pbUsage.progress = usagePercent.coerceIn(0, 100)
         tvUsagePercent.text = "$usagePercent% of monthly income used"
-        
+
         if (usagePercent > 100) {
             tvUsagePercent.setTextColor(requireContext().getColor(R.color.expense_red))
         } else {
@@ -444,6 +444,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         val finalCategory = if (type == TransactionType.EXPENSE && customBudget != "None") customBudget else mainCategory
 
         AppData.addTransaction(
+            context = requireContext(),
             title = etTitle.text.toString().trim(),
             amount = etAmount.text.toString().trim().toDouble(),
             type = type,

@@ -108,7 +108,8 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
     private fun showDatePicker() {
         val builder = MaterialDatePicker.Builder.dateRangePicker()
         builder.setTitleText("Select Custom Period")
-        
+        builder.setTheme(R.style.AppDatePicker)
+
         if (startDate != null && endDate != null) {
             builder.setSelection(Pair(startDate!!.time, endDate!!.time))
         }
@@ -132,7 +133,7 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private fun refresh() {
         val transactions: List<com.budget.app.models.Transaction>
-        
+
         if (startDate != null && endDate != null) {
             val df = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
             tvMonthLabel.text = "${df.format(startDate!!)} - ${df.format(endDate!!)}"
@@ -171,15 +172,15 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
     private fun updateBudgetSummary(periodTransactions: List<com.budget.app.models.Transaction>) {
         val goals = AppData.getBudgetGoals()
         val totalBudgeted = goals.sumOf { it.limitAmount }
-        
+
         val spentMap = periodTransactions.filter { it.type == TransactionType.EXPENSE }
             .groupBy { it.category }
             .mapValues { it.value.sumOf { t -> t.amount } }
-            
+
         val totalSpent = goals.sumOf { spentMap[it.category] ?: 0.0 }
         val remaining = (totalBudgeted - totalSpent).coerceAtLeast(0.0)
         val percent = if (totalBudgeted > 0) ((totalSpent / totalBudgeted) * 100).toInt() else 0
-        
+
         tvTotalBudgeted.text = CurrencyFormatter.format(totalBudgeted)
         tvTotalSpent.text = CurrencyFormatter.format(totalSpent)
         tvBudgetRemaining.text = CurrencyFormatter.format(remaining)
@@ -189,18 +190,18 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private fun setupWeeklyTracker(container: LinearLayout) {
         container.removeAllViews()
-        
+
         val cal = Calendar.getInstance()
         val currentMonth = cal.get(Calendar.MONTH)
         val currentYear = cal.get(Calendar.YEAR)
-        
+
         cal.add(Calendar.MONTH, -1)
         val lastMonth = cal.get(Calendar.MONTH)
         val lastYear = cal.get(Calendar.YEAR)
-        
+
         val lmWeekly = calculateWeeklyData(AppData.getTransactionsForMonth(lastMonth, lastYear))
         val cmWeekly = calculateWeeklyData(AppData.getTransactionsForMonth(currentMonth, currentYear))
-        
+
         val maxVal = (lmWeekly + cmWeekly).maxOfOrNull { it.max() }?.coerceAtLeast(1.0) ?: 1.0
 
         lmWeekly.forEachIndexed { i, data -> addWeeklyGroup(container, data, "LM W${i+1}", maxVal) }
@@ -276,7 +277,7 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
         fun getDailyMap(type: TransactionType): Map<Int, Double> {
             val cal = Calendar.getInstance()
             return transactions.filter { it.type == type }
-                .groupBy { 
+                .groupBy {
                     cal.time = it.date
                     cal.get(Calendar.DAY_OF_MONTH)
                 }
@@ -322,7 +323,7 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
         for (day in 1..daysInMonth) {
             val amount = data[day] ?: 0.0
             val barHeight = (amount / maxVal * 100).toInt()
-            
+
             val bar = View(requireContext()).apply {
                 val heightPx = (barHeight * resources.displayMetrics.density).toInt().coerceAtLeast(2)
                 layoutParams = LinearLayout.LayoutParams(12.dpToPx(), heightPx).apply {
@@ -352,7 +353,7 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
             val spentMap = transactions.filter { it.type == TransactionType.EXPENSE }
                 .groupBy { it.category }
                 .mapValues { it.value.sumOf { t -> t.amount } }
-            
+
             budgetGoals.forEach { goal ->
                 val spent = spentMap[goal.category] ?: 0.0
                 addBudgetRow(goal.category, spent, goal.limitAmount, R.color.expense_red)
@@ -399,17 +400,17 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
     private fun addBudgetRow(category: String, spent: Double, limit: Double, colorRes: Int) {
         val row = layoutInflater.inflate(R.layout.item_category_bar, layoutBreakdown, false)
         row.findViewById<TextView>(R.id.tvBarCategory).text = category
-        
+
         val percent = if (limit > 0) ((spent / limit) * 100).toInt() else 0
         row.findViewById<TextView>(R.id.tvBarPercent).text = "$percent%"
-        
-        row.findViewById<TextView>(R.id.tvBarAmount).text = 
+
+        row.findViewById<TextView>(R.id.tvBarAmount).text =
             "${CurrencyFormatter.format(spent)} / ${CurrencyFormatter.format(limit)}"
-        
+
         val bar = row.findViewById<ProgressBar>(R.id.pbCategory)
         bar.progress = percent.coerceAtMost(100)
         bar.progressTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(colorRes))
-        
+
         row.isClickable = true
         row.isFocusable = true
         row.setBackgroundResource(android.R.drawable.list_selector_background)
@@ -417,7 +418,7 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
             val fragment = AddTransactionFragment.newInstance(TransactionType.EXPENSE, category)
             (activity as? MainActivity)?.loadFragment(fragment)
         }
-        
+
         layoutBreakdown.addView(row)
     }
 
@@ -432,16 +433,16 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
 
         byCategory.forEach { (category, txs) ->
             val total = txs.sumOf { it.amount }
-            
+
             val row = layoutInflater.inflate(R.layout.item_category_bar, layoutBreakdown, false)
             row.findViewById<TextView>(R.id.tvBarCategory).text = category
             row.findViewById<TextView>(R.id.tvBarPercent).text = ""
             row.findViewById<TextView>(R.id.tvBarAmount).text = CurrencyFormatter.format(total)
-            
+
             val bar = row.findViewById<ProgressBar>(R.id.pbCategory)
             bar.progress = 100
             bar.progressTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(colorRes))
-            
+
             row.isClickable = true
             row.isFocusable = true
             row.setBackgroundResource(android.R.drawable.list_selector_background)
@@ -449,7 +450,7 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
                 val fragment = AddTransactionFragment.newInstance(type, category)
                 (activity as? MainActivity)?.loadFragment(fragment)
             }
-            
+
             layoutBreakdown.addView(row)
 
             txs.forEach { tx ->
@@ -476,17 +477,17 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
         debts.forEach { debt ->
             val row = layoutInflater.inflate(R.layout.item_category_bar, layoutBreakdown, false)
             row.findViewById<TextView>(R.id.tvBarCategory).text = debt.name
-            
+
             val totalPaid = debt.amount - debt.remainingAmount
             val percent = if (debt.amount > 0) ((totalPaid / debt.amount) * 100).toInt() else 0
-            
+
             row.findViewById<TextView>(R.id.tvBarPercent).text = "$percent%"
             row.findViewById<TextView>(R.id.tvBarAmount).text = "${CurrencyFormatter.format(debt.remainingAmount)} remaining"
-            
+
             val bar = row.findViewById<ProgressBar>(R.id.pbCategory)
             bar.progress = percent
             bar.progressTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(R.color.expense_red))
-            
+
             row.isClickable = true
             row.isFocusable = true
             row.setBackgroundResource(android.R.drawable.list_selector_background)
@@ -494,7 +495,7 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
                 val fragment = AddTransactionFragment.newInstance(TransactionType.EXPENSE, "Debt Payment")
                 (activity as? MainActivity)?.loadFragment(fragment)
             }
-            
+
             layoutBreakdown.addView(row)
         }
 
@@ -506,7 +507,7 @@ class ReportFragment : Fragment(), MainActivity.OnBackPressedListener {
                 setPadding(16.dpToPx(), 8.dpToPx(), 0, 4.dpToPx())
             }
             layoutBreakdown.addView(header)
-            
+
             debtTxs.forEach { tx ->
                 val txTv = TextView(requireContext()).apply {
                     text = "  • ${tx.title}: ${CurrencyFormatter.format(tx.amount)}"

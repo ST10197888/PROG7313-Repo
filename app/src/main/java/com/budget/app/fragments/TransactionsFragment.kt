@@ -31,8 +31,7 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
     private lateinit var tvActiveFilter: TextView
     private lateinit var btnFilter: ImageButton
 
-    // Overlay Views
-    private lateinit var overlayContainer: View
+    private lateinit var overlayContainer: View    // Overlay Views
     private lateinit var progressBarCard: CardView
     private lateinit var tvProgressBar: TextView
     private lateinit var btnCancelDelete: Button
@@ -86,7 +85,8 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
     private fun showDatePicker() {
         val builder = MaterialDatePicker.Builder.dateRangePicker()
         builder.setTitleText("Select Date Range")
-        
+        builder.setTheme(R.style.AppDatePicker)
+
         if (startDate != null && endDate != null) {
             builder.setSelection(Pair(startDate!!.time, endDate!!.time))
         }
@@ -116,9 +116,9 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
     private fun startDeletionProcess(transaction: Transaction) {
         transactionToDelete = transaction
         showOverlay()
-        
+
         var elapsed = 0L
-        val totalDuration = 3500L
+        val totalDuration = 1500L
         val tickInterval = 50L
 
         deletionTimer = object : CountDownTimer(totalDuration, tickInterval) {
@@ -169,7 +169,7 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private fun completeDeletion() {
         transactionToDelete?.let {
-            AppData.removeTransaction(it.id)
+            AppData.removeTransaction(requireContext(), it.id)
             refreshList()
             Toast.makeText(requireContext(), "Transaction deleted", Toast.LENGTH_SHORT).show()
         }
@@ -181,14 +181,14 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
         val list = AppData.getFilteredTransactions(startDate, endDate)
         adapter.updateData(list)
         tvEmpty.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
-        
+
         if (startDate != null && endDate != null) {
             val df = SimpleDateFormat("dd MMM", Locale.getDefault())
             tvActiveFilter.text = "Filtering: ${df.format(startDate!!)} - ${df.format(endDate!!)}"
             tvActiveFilter.visibility = View.VISIBLE
         } else {
             tvActiveFilter.text = "Filtering: All Time"
-            // tvActiveFilter.visibility = View.GONE // Keep it visible to show current state
+            // Keep it visible to show current state
         }
     }
 
