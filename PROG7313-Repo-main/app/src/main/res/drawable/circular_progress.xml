@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background track -->
+    <item android:id="@android:id/background">
+        <shape android:shape="ring"
+            android:thicknessRatio="8"
+            android:useLevel="false">
+            <solid android:color="#E3F2FD" />
+        </shape>
+    </item>
+    <!-- Progress fill -->
+    <item android:id="@android:id/progress">
+        <clip>
+            <shape android:shape="ring"
+                android:thicknessRatio="8"
+                android:useLevel="true">
+                <solid android:color="#1565C0" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>
