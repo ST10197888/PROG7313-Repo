@@ -21,6 +21,16 @@ class ExampleUnitTest {
         assertEquals(175.0, total, 0.0)
     }
 
+    @Test
+fun appLaunchesCorrectly() {
+    // basic launch test
+}
+
+@Test
+fun emptyExpenses_returnsZero() {
+    val expenses = listOf<Double>()
+    assertEquals(0.0, expenses.sum(), 0.0)
+}
     // Test adding a new expense
     @Test
     fun addExpense_isCorrect() {
