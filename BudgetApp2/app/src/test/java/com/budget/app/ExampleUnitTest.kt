@@ -1,76 +1,114 @@
 package com.budget.app
 
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.Assert.*
 
+// Unit tests for basic business logic (expense calculations)
 class ExampleUnitTest {
 
-    // Test total expense calculation
+    // Test: Verify total expense calculation is correct
     @Test
     fun totalExpenses_isCorrect() {
-        val expenses = listOf(100.0, 50.0, 25.0)
+        println("=== TEST START: totalExpenses_isCorrect ===")
 
-        println("Running totalExpenses_isCorrect test...")
+        // Arrange: create sample expense list
+        val expenses = listOf(100.0, 50.0, 25.0)
         println("Expenses list: $expenses")
 
+        // Act: calculate total
         val total = expenses.sum()
-
         println("Calculated total: $total")
-        println("Expected total: 175.0")
 
+        // Assert: verify expected result
         assertEquals(175.0, total, 0.0)
+
+        println("=== TEST PASSED: totalExpenses_isCorrect ===\n")
     }
 
-    // Test adding a new expense
+    // Test: Verify adding a new expense works correctly
     @Test
     fun addExpense_isCorrect() {
-        val expenses = mutableListOf(100.0, 50.0)
+        println("=== TEST START: addExpense_isCorrect ===")
 
-        println("Running addExpense_isCorrect test...")
+        // Arrange
+        val expenses = mutableListOf(100.0, 50.0)
         println("Initial expenses: $expenses")
 
+        // Act
         expenses.add(25.0)
-
-        println("Expenses after adding new value: $expenses")
+        println("Updated expenses: $expenses")
 
         val total = expenses.sum()
-
         println("New total: $total")
-        println("Expected size: 3")
 
+        // Assert
         assertEquals(3, expenses.size)
         assertEquals(175.0, total, 0.0)
+
+        println("=== TEST PASSED: addExpense_isCorrect ===\n")
     }
 
-    // Test empty list (edge case)
+    // Test: Edge case — empty list should return 0
     @Test
-    fun emptyExpenses_isZero() {
-        val expenses = listOf<Double>()
+    fun emptyExpenses_returnsZero() {
+        println("=== TEST START: emptyExpenses_returnsZero ===")
 
-        println("Running emptyExpenses_isZero test...")
+        // Arrange
+        val expenses = emptyList<Double>()
         println("Expenses list is empty")
 
+        // Act
         val total = expenses.sum()
-
         println("Calculated total: $total")
-        println("Expected total: 0.0")
 
+        // Assert
         assertEquals(0.0, total, 0.0)
+
+        println("=== TEST PASSED: emptyExpenses_returnsZero ===\n")
     }
 
-    // Test negative values
+    // Test: Edge case — negative values handled correctly
     @Test
-    fun negativeExpense_handledCorrectly() {
+    fun negativeExpense_isHandledCorrectly() {
+        println("=== TEST START: negativeExpense_isHandledCorrectly ===")
+
+        // Arrange
         val expenses = listOf(100.0, -50.0)
+        println("Expenses: $expenses")
 
-        println("Running negativeExpense_handledCorrectly test...")
-        println("Expenses list: $expenses")
-
+        // Act
         val total = expenses.sum()
-
         println("Calculated total: $total")
-        println("Expected total: 50.0")
 
+        // Assert
         assertEquals(50.0, total, 0.0)
+
+        println("=== TEST PASSED: negativeExpense_isHandledCorrectly ===\n")
+    }
+
+    // Test: Performance check (simple timing)
+    @Test
+    fun performance_totalCalculation_isFastEnough() {
+        println("=== TEST START: performance_totalCalculation_isFastEnough ===")
+
+        // Arrange
+        val expenses = List(1000) { 10.0 }
+        println("Generated ${expenses.size} expenses")
+
+        // Act: measure execution time
+        val startTime = System.currentTimeMillis()
+        val total = expenses.sum()
+        val endTime = System.currentTimeMillis()
+
+        val duration = endTime - startTime
+        println("Total: $total")
+        println("Execution time: $duration ms")
+
+        // Assert
+        assertEquals(10000.0, total, 0.0)
+        assertTrue("Performance too slow", duration < 1000)
+
+        println("=== TEST PASSED: performance_totalCalculation_isFastEnough ===\n")
     }
 }

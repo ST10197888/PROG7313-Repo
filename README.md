@@ -5,6 +5,10 @@
 
 A personal finance Android app built to help anyone track their transactions, manage budgets, set financial goals, and reduce debt -while it's all stored locally on your device.
 
+<p align="center">
+Youtube Demo video - https://youtu.be/KNrDPY3oAu4  
+</p>
+
 ---
 
 ## The Team
@@ -52,8 +56,6 @@ A personal finance Android app built to help anyone track their transactions, ma
 - Navigation - Bottom and Sidebar navigation
 - Testing - using JUnit
 - CI - GitHub Actions
-
----
 
 ---
 
