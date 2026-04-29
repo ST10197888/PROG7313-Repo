@@ -114,6 +114,13 @@ class DebtReductionFragment : Fragment(), MainActivity.OnBackPressedListener {
     }
 
     private fun showPaymentDialog(debt: Debt) {
+        // Prevent dialog from even opening if the debt is already fully paid
+        if (debt.remainingAmount <= 0) {
+            Log.i(TAG, "User clicked fully paid debt: ${debt.name}")
+            Toast.makeText(requireContext(), "Debt already fully paid!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val input = EditText(requireContext())
         input.hint = "Payment Amount (min ${String.format("%.2f", debt.minPayment)})"
         input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
