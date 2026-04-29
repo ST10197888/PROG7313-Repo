@@ -1,86 +1,96 @@
 package com.budget.app
 
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.Assert.*
 
 class ExampleUnitTest {
 
-    // Test total expense calculation
     @Test
     fun totalExpenses_isCorrect() {
-        val expenses = listOf(100.0, 50.0, 25.0)
+        println("Starting totalExpenses_isCorrect test...")
 
-        println("Running totalExpenses_isCorrect test...")
-        println("Expenses list: $expenses")
+        val expenses = listOf(100.0, 50.0, 25.0)
+        println("Expenses: $expenses")
 
         val total = expenses.sum()
-
         println("Calculated total: $total")
         println("Expected total: 175.0")
 
         assertEquals(175.0, total, 0.0)
+
+        println("totalExpenses_isCorrect passed")
     }
 
     @Test
-fun appLaunchesCorrectly() {
-    // basic launch test
-}
-
-@Test
-fun emptyExpenses_returnsZero() {
-    val expenses = listOf<Double>()
-    assertEquals(0.0, expenses.sum(), 0.0)
-}
-    // Test adding a new expense
-    @Test
     fun addExpense_isCorrect() {
-        val expenses = mutableListOf(100.0, 50.0)
+        println("Starting addExpense_isCorrect test...")
 
-        println("Running addExpense_isCorrect test...")
+        val expenses = mutableListOf(100.0, 50.0)
         println("Initial expenses: $expenses")
 
         expenses.add(25.0)
-
-        println("Expenses after adding new value: $expenses")
+        println("Expenses after adding new expense: $expenses")
 
         val total = expenses.sum()
-
         println("New total: $total")
-        println("Expected size: 3")
 
         assertEquals(3, expenses.size)
         assertEquals(175.0, total, 0.0)
+
+        println("addExpense_isCorrect passed")
     }
 
-    // Test empty list (edge case)
     @Test
-    fun emptyExpenses_isZero() {
-        val expenses = listOf<Double>()
+    fun emptyExpenses_returnsZero() {
+        println("Starting emptyExpenses_returnsZero test...")
 
-        println("Running emptyExpenses_isZero test...")
+        val expenses = emptyList<Double>()
         println("Expenses list is empty")
 
         val total = expenses.sum()
-
         println("Calculated total: $total")
-        println("Expected total: 0.0")
 
         assertEquals(0.0, total, 0.0)
+
+        println("emptyExpenses_returnsZero passed")
     }
 
-    // Test negative values
     @Test
-    fun negativeExpense_handledCorrectly() {
-        val expenses = listOf(100.0, -50.0)
+    fun negativeExpense_isHandledCorrectly() {
+        println("Starting negativeExpense_isHandledCorrectly test...")
 
-        println("Running negativeExpense_handledCorrectly test...")
-        println("Expenses list: $expenses")
+        val expenses = listOf(100.0, -50.0)
+        println("Expenses with negative value: $expenses")
+
+        val total = expenses.sum()
+        println("Calculated total: $total")
+
+        assertEquals(50.0, total, 0.0)
+
+        println("negativeExpense_isHandledCorrectly passed")
+    }
+
+    @Test
+    fun performance_totalCalculation_isFastEnough() {
+        println("Starting performance_totalCalculation_isFastEnough test...")
+
+        val expenses = List(1000) { 10.0 }
+        println("Created ${expenses.size} expenses for performance test")
+
+        val startTime = System.currentTimeMillis()
 
         val total = expenses.sum()
 
-        println("Calculated total: $total")
-        println("Expected total: 50.0")
+        val endTime = System.currentTimeMillis()
+        val duration = endTime - startTime
 
-        assertEquals(50.0, total, 0.0)
+        println("Total calculated: $total")
+        println("Execution time: $duration ms")
+
+        assertEquals(10000.0, total, 0.0)
+        assertTrue("Calculation took too long", duration < 1000)
+
+        println("performance_totalCalculation_isFastEnough passed")
     }
 }
