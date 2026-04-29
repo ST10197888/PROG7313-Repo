@@ -2,6 +2,7 @@ package com.budget.app.activities
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.MenuItem
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
@@ -22,15 +23,18 @@ import com.google.android.material.navigation.NavigationView
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
+    private val TAG = "MainActivity"
+
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var bottomNav: BottomNavigationView
 
     private var backPressedTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Load Dark Mode Preference
+
         val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
         val isDarkMode = prefs.getBoolean("dark_mode", false)
+        Log.d(TAG, "Dark mode preference loaded: isDarkMode=$isDarkMode")
         if (isDarkMode) {
             AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
         } else {
@@ -40,7 +44,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Initialize AppData with persistence
+        Log.d(TAG, "Initialising AppData for user: ${AppData.currentUser?.email ?: "none"}")
         AppData.init(this)
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
@@ -65,6 +69,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
         // Show dashboard on start
         if (savedInstanceState == null) {
+            Log.d(TAG, "First launch, loading DashboardFragment")
             loadFragment(DashboardFragment(), addToBackStack = false)
         }
 
@@ -75,6 +80,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 R.id.nav_profile      -> ProfileFragment()
                 else -> DashboardFragment()
             }
+            Log.d(TAG, "Bottom nav item selected: ${resources.getResourceEntryName(item.itemId)}")
             loadFragment(fragment)
             true
         }
@@ -95,18 +101,21 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 }
 
                 if (supportFragmentManager.backStackEntryCount > 0) {
+                    Log.d(TAG, "Back pressed, popping back stack (count=${supportFragmentManager.backStackEntryCount})")
                     supportFragmentManager.popBackStack()
                     supportFragmentManager.executePendingTransactions()
                     android.os.Handler(android.os.Looper.getMainLooper()).post { updateBottomNavSelection() }
                 } else {
                     if (currentFragment is DashboardFragment) {
                         if (System.currentTimeMillis() - backPressedTime < 2000) {
+                            Log.d(TAG, "Double back press detected, moving task to background")
                             moveTaskToBack(true)
                         } else {
                             backPressedTime = System.currentTimeMillis()
                             Toast.makeText(this@MainActivity, "Press back again to exit", Toast.LENGTH_SHORT).show()
                         }
                     } else {
+                        Log.d(TAG, "Back pressed from non-dashboard fragment, navigating to dashboard")
                         navigateTo(R.id.nav_dashboard)
                     }
                 }
@@ -124,6 +133,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
+        Log.d(TAG, "Drawer nav item selected: ${resources.getResourceEntryName(item.itemId)}")
         navigateTo(item.itemId)
         drawerLayout.closeDrawer(GravityCompat.START)
         return true
@@ -133,13 +143,14 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         val current = supportFragmentManager.findFragmentById(R.id.fragmentContainer)
         if (current?.javaClass == fragment.javaClass) return
 
+        Log.d(TAG, "Loading fragment: ${fragment.javaClass.simpleName}, addToBackStack=$addToBackStack")
         val transaction = supportFragmentManager.beginTransaction()
             .replace(R.id.fragmentContainer, fragment)
-        
+
         if (addToBackStack) {
             transaction.addToBackStack(fragment.javaClass.simpleName)
         }
-        
+
         transaction.commit()
     }
 
@@ -163,6 +174,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             R.id.nav_settings     -> SettingsFragment()
             else -> DashboardFragment()
         }
+        Log.d(TAG, "Navigating to: ${fragment.javaClass.simpleName}")
         loadFragment(fragment)
     }
 

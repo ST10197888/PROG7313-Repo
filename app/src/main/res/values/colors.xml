@@ -3,6 +3,7 @@
     <color name="colorPrimary">#003366</color>
     <color name="colorPrimaryDark">#002244</color>
     <color name="colorAccent">#00A3E0</color>
+    <color name="accent_blue">#00A3E0</color>
 
     <!-- Semantic Colors -->
     <color name="income_green">#00B4A3</color>
@@ -33,7 +34,13 @@
     <color name="profile_avatar_circle_bg">#E8F0FE</color>
     <color name="header_on_background">#FFFFFF</color>
 
-    <!-- White variations -->
+    <!-- Dashboard Quick Stats Backgrounds -->
+    <color name="dashboard_income_bg">#E8F5E9</color>
+    <color name="dashboard_expense_bg">#FFEBEE</color>
+    <color name="dashboard_balance_bg">#E3F2FD</color>
+
+    <!-- White/Black variations -->
     <color name="white">#FFFFFF</color>
     <color name="white_soft">#F9FBFD</color>
+    <color name="black">#000000</color>
 </resources>

@@ -1,6 +1,7 @@
 package com.budget.app.utils
 
 import android.content.Context
+import android.util.Log
 import com.budget.app.database.AppDatabase
 import com.budget.app.database.BudgetGoalEntity
 import com.budget.app.database.DebtEntity
@@ -13,6 +14,7 @@ import java.util.*
 
 object AppData {
 
+    private const val TAG = "AppData"
     private const val PREFS_NAME = "BudgetAppPrefs"
 
     private val users = mutableListOf<User>()
@@ -57,10 +59,10 @@ object AppData {
         "Talk to Your Parents or Guardians: Know how much support they'll provide before heading out on your own.",
         "Consider Cost When Choosing a School: In-state vs out-of-state and public vs private can drastically change what you pay.",
         "Know Your Financial Need: Your need is calculated as Cost of Attendance minus Expected Family Contribution.",
-        "Complete the FAFSA Early: It opens in October — apply as soon as possible as some deadlines are as early as February.",
-        "Understand Student Loans: You're borrowing money plus interest — federal loans are safer than private ones.",
+        "Complete the FAFSA Early: It opens in October -- apply as soon as possible as some deadlines are as early as February.",
+        "Understand Student Loans: You're borrowing money plus interest -- federal loans are safer than private ones.",
         "Know Your Repayment Options: Keep loan payments under 10-15% of your income to avoid falling behind.",
-        "Discover Free Money: Grants and scholarships don't need to be repaid — explore every option available.",
+        "Discover Free Money: Grants and scholarships don't need to be repaid -- explore every option available.",
         "Apply for Scholarships Smart: Meet deadlines, apply for as many as possible and watch out for scams.",
         "Earn Your Aid: Work-study and ROTC programs can help fund your education in exchange for work or service.",
         "Evaluate Your Aid Options: Only borrow what you need and understand the terms before accepting any aid.",
@@ -69,14 +71,14 @@ object AppData {
         "Put Your Money in the Bank: A bank account keeps your money safe, accessible and potentially earning interest.",
         "Use Your Checking Account Responsibly: Monitor transactions, set up alerts and never spend money you don't have.",
         "Get Organized: Keep physical or digital records of all financial documents, bills and contracts.",
-        "Watch Out for Identity Fraud: Students are among the least likely to detect fraud — stay alert.",
+        "Watch Out for Identity Fraud: Students are among the least likely to detect fraud -- stay alert.",
         "Protect Yourself from Identity Fraud: Shred documents, guard personal info and shop only on secure websites.",
         "Report and Remedy Identity Fraud: Act within 48 hours, alert credit bureaus and file a police report.",
         "Create a Spending Plan: Track every expense for a month then build a plan ranking fixed expenses first.",
         "Develop a Money Management Style: Align your spending with your values and know what drives your financial decisions.",
         "Set SMART Financial Goals: Make goals specific, measurable, achievable, realistic and time-bound.",
         "Spend Your Money Wisely: Make a list before shopping, compare prices and think big purchases through carefully.",
-        "Start Saving Today: Treat savings like a bill — pay yourself first and automate it so you never skip.",
+        "Start Saving Today: Treat savings like a bill -- pay yourself first and automate it so you never skip.",
         "Limit Transportation Costs: Walk, bike or use public transport when possible; combine errands to save on fuel.",
         "Curb Tech Expenses: Assess what you truly need, compare prices and consider refurbished devices.",
         "Select Housing Mindfully: Compare dorm vs off-campus costs including utilities, deposits and renters insurance.",
@@ -84,13 +86,13 @@ object AppData {
         "Plug Spending Leaks: Cut costly habits, seek student discounts and avoid unnecessary charges on your student account.",
         "Find the Right Health Care Coverage: Compare your family plan, school plan and marketplace options carefully.",
         "Earn Extra Money with a Job: Look for flexible on-campus or off-campus work that doesn't interfere with your studies.",
-        "Know How Credit Cards Work: A credit card is a loan — unpaid balances accrue interest that compounds over time.",
+        "Know How Credit Cards Work: A credit card is a loan -- unpaid balances accrue interest that compounds over time.",
         "Choose Your Credit Card Carefully: Look for no annual fees, low interest rates and a 20-30 day grace period.",
         "Use Your Credit Card Responsibly: Pay your full balance on time every month and never use it for cash advances.",
         "Build a Good Credit History: Pay everything on time and keep your credit usage below 25% of your available limit.",
         "Get Help If You're in Debt Trouble: Contact creditors, seek credit counselling and follow the 20-10 debt rule.",
-        "Harness the Power of Compounding Interest: Start saving early — even small amounts grow significantly over time.",
-        "Know Where to Invest Your Money: Stocks and mutual funds grow wealth long-term but carry risk — seek advice.",
+        "Harness the Power of Compounding Interest: Start saving early -- even small amounts grow significantly over time.",
+        "Know Where to Invest Your Money: Stocks and mutual funds grow wealth long-term but carry risk -- seek advice.",
         "Look for Guidance: Use campus resources including advisors, financial aid offices and legal services when needed.",
         "Choose a Major Wisely: Research employment outlook and earning potential before committing to a field of study.",
         "Make Your Career a Main Focus: Visit the career centre early, take internships and start networking before graduation."
@@ -112,25 +114,32 @@ object AppData {
         achievements.add(Achievement("fitness_starter", "Financial Starter", "Reach a fitness score of 50%", 0))
         achievements.add(Achievement("fitness_pro", "Financial Athlete", "Reach a fitness score of 80%", 0))
         achievements.add(Achievement("fitness_elite", "Financial Elite", "Reach a fitness score of 95%", 0))
+        Log.d(TAG, "Achievements initialised: ${achievements.size} total")
     }
 
     fun init(context: Context) {
+        Log.d(TAG, "Initialising AppData, loading users from database")
         val db = AppDatabase.getInstance(context)
         db.userDao().getAll().forEach { entity: UserEntity ->
             val u = entity.toModel()
             if (users.none { user -> user.id == u.id }) users.add(u)
             if (nextUserId <= u.id) nextUserId = u.id + 1
         }
+        Log.d(TAG, "Loaded ${users.size} users from database, nextUserId=$nextUserId")
 
         // Restore current user session if exists
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val savedUserId = prefs.getInt("current_user_id", -1)
         if (savedUserId != -1) {
             currentUser = users.find { it.id == savedUserId }
+            Log.d(TAG, "Restored session for userId=$savedUserId, found=${currentUser != null}")
             currentUser?.let { SessionManager.setUserId(context, it.id) }
+        } else {
+            Log.d(TAG, "No saved session found")
         }
 
         if (users.none { user -> user.email == "seed@budget.com" }) {
+            Log.d(TAG, "Seed user not found, re-registering")
             register("Seed User", "seed@budget.com", "password123")
         }
 
@@ -138,41 +147,60 @@ object AppData {
         loadUserData(context)
 
         if (transactions.isEmpty()) {
+            Log.d(TAG, "No transactions found after init, resetting achievements")
             initAchievements()
         } else {
+            Log.d(TAG, "Transactions found after init (${transactions.size}), checking achievements")
             checkAchievements()
         }
     }
 
     fun register(name: String, email: String, password: String, context: Context? = null): Boolean {
-        if (users.any { it.email.equals(email, ignoreCase = true) }) return false
+        if (users.any { it.email.equals(email, ignoreCase = true) }) {
+            Log.d(TAG, "Registration rejected for email: $email, already exists")
+            return false
+        }
         val user = User(nextUserId++, name, email, password)
         users.add(user)
+        Log.d(TAG, "Registered new user: email=$email, userId=${user.id}")
         context?.let {
             val db = AppDatabase.getInstance(it)
             db.userDao().insert(UserEntity.fromModel(user))
+            Log.d(TAG, "User persisted to database: userId=${user.id}")
         }
         return true
     }
 
     fun login(email: String, password: String, context: Context): Boolean {
+        Log.d(TAG, "Login attempt for email: $email")
         val user = users.find { it.email.equals(email, ignoreCase = true) && it.password == password }
         currentUser = user
         if (user != null) {
+            Log.d(TAG, "Login successful for userId=${user.id}, loading user data")
             SessionManager.setUserId(context, user.id)
             loadUserData(context)
             saveData(context)
             if (user.email == "seed@budget.com" && transactions.isEmpty()) {
+                Log.d(TAG, "Seed user has no transactions, seeding demo data")
                 seedDemoData(context)
             }
+        } else {
+            Log.d(TAG, "Login failed for email: $email, no matching user found")
         }
         return user != null
     }
 
-    fun logout() { currentUser = null }
+    fun logout() {
+        Log.d(TAG, "Logging out userId=${currentUser?.id}")
+        currentUser = null
+    }
 
     fun saveData(context: Context) {
-        val userId = currentUser?.id ?: return
+        val userId = currentUser?.id ?: run {
+            Log.d(TAG, "saveData called with no current user, skipping")
+            return
+        }
+        Log.d(TAG, "Saving session and custom categories for userId=$userId")
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit()
             .putInt("current_user_id", userId)
@@ -182,13 +210,14 @@ object AppData {
             .apply()
     }
 
-    // ── Transactions
+    // Transactions
     fun addTransaction(
         context: Context,
         title: String, amount: Double, type: TransactionType,
         category: String, notes: String = "", date: Date = Date(),
         attachmentUri: String? = null, attachmentName: String? = null
     ) {
+        Log.d(TAG, "Adding transaction: title=$title, amount=$amount, type=$type, category=$category")
         val transaction = Transaction(0, title, amount, type, category, date, notes, attachmentUri, attachmentName)
 
         // Save to Room DB
@@ -197,6 +226,7 @@ object AppData {
             val id = db.transactionDao().insert(TransactionEntity.fromModel(transaction, user.id)).toInt()
             val finalTx = transaction.copy(id = id)
             transactions.add(finalTx)
+            Log.d(TAG, "Transaction saved to database with id=$id, total transactions=${transactions.size}")
         }
 
         recalcBudgetGoals()
@@ -204,9 +234,11 @@ object AppData {
     }
 
     fun removeTransaction(context: Context, id: Int) {
+        Log.d(TAG, "Removing transaction id=$id")
         transactions.removeAll { it.id == id }
         val db = AppDatabase.getInstance(context)
         db.transactionDao().deleteById(id)
+        Log.d(TAG, "Transaction id=$id removed, remaining transactions=${transactions.size}")
         recalcBudgetGoals()
         checkAchievements()
     }
@@ -239,10 +271,12 @@ object AppData {
     fun addOrUpdateBudgetGoal(context: Context, category: String, limit: Double, min: Double = 0.0) {
         val existing = budgetGoals.find { it.category == category }
         val goal = if (existing != null) {
+            Log.d(TAG, "Updating budget goal for category=$category, newLimit=$limit, newMin=$min")
             existing.limitAmount = limit
             existing.minAmount = min
             existing
         } else {
+            Log.d(TAG, "Adding new budget goal for category=$category, limit=$limit, min=$min")
             val newGoal = BudgetGoal(category, limit, min)
             budgetGoals.add(newGoal)
             newGoal
@@ -251,6 +285,7 @@ object AppData {
         val db = AppDatabase.getInstance(context)
         currentUser?.let { user ->
             db.budgetGoalDao().insertOrUpdate(BudgetGoalEntity.fromModel(goal, user.id))
+            Log.d(TAG, "Budget goal persisted for category=$category, userId=${user.id}")
         }
 
         recalcBudgetGoals()
@@ -258,14 +293,17 @@ object AppData {
     }
 
     fun removeBudgetGoal(context: Context, category: String) {
+        Log.d(TAG, "Removing budget goal for category=$category")
         budgetGoals.removeAll { it.category == category }
         val db = AppDatabase.getInstance(context)
         currentUser?.let { user ->
             db.budgetGoalDao().deleteByCategory(category, user.id)
+            Log.d(TAG, "Budget goal deleted from database for category=$category, userId=${user.id}")
         }
     }
 
     private fun recalcBudgetGoals() {
+        Log.d(TAG, "Recalculating spent amounts for ${budgetGoals.size} budget goals")
         val byCategory = transactions.filter { it.type == TransactionType.EXPENSE }
             .groupBy { it.category }
             .mapValues { (_, list) -> list.sumOf { it.amount } }
@@ -282,18 +320,21 @@ object AppData {
     fun getFinancialGoalByName(name: String): FinancialGoal? = financialGoals.find { it.name == name }
 
     fun addFinancialGoal(context: Context, name: String, target: Double, deadline: Date) {
+        Log.d(TAG, "Adding financial goal: name=$name, target=$target, deadline=$deadline")
         val goal = FinancialGoal(0, name, target, 0.0, deadline)
 
         val db = AppDatabase.getInstance(context)
         currentUser?.let { user ->
             val id = db.financialGoalDao().insertOrUpdate(FinancialGoalEntity.fromModel(goal, user.id)).toInt()
             financialGoals.add(goal.copy(id = id))
+            Log.d(TAG, "Financial goal saved with id=$id, total goals=${financialGoals.size}")
         }
         checkAchievements()
     }
 
     fun updateGoalProgress(context: Context, id: Int, amount: Double) {
         financialGoals.find { it.id == id }?.let {
+            Log.d(TAG, "Updating goal progress for goalId=$id, adding amount=$amount, newTotal=${it.currentAmount + amount}")
             it.currentAmount += amount
             val db = AppDatabase.getInstance(context)
             currentUser?.let { user ->
@@ -304,8 +345,10 @@ object AppData {
 
     // Debts
     fun getDebts() = debts.toList()
+
     fun addDebt(context: Context, name: String, amount: Double, rate: Double, minPay: Double) {
-        val debt = Debt(0, name, amount, rate, minPay, amount) // Fixed caret
+        Log.d(TAG, "Adding debt: name=$name, amount=$amount, interestRate=$rate, minPayment=$minPay")
+        val debt = Debt(0, name, amount, rate, minPay, amount)
         val db = AppDatabase.getInstance(context)
 
         currentUser?.let { user ->
@@ -314,15 +357,18 @@ object AppData {
 
             // IMPORTANT: Add to the list so the UI sees it!
             debts.add(debt.copy(id = id))
+            Log.d(TAG, "Debt saved with id=$id, total debts=${debts.size}")
         }
         checkAchievements()
     }
 
     fun recordDebtPayment(context: Context, id: Int, amount: Double) {
         debts.find { it.id == id }?.let {
+            Log.d(TAG, "Recording debt payment for debtId=$id, amount=$amount, remainingBefore=${it.remainingAmount}")
             it.remainingAmount -= amount
             if (it.remainingAmount <= 0) {
                 it.remainingAmount = 0.0
+                Log.d(TAG, "Debt id=$id fully paid off")
                 checkAchievements()
             }
             val db = AppDatabase.getInstance(context)
@@ -348,11 +394,14 @@ object AppData {
         val savingsRatio = (savings / income) / 0.20
         val savingsScore = (savingsRatio * 30.0).coerceAtMost(30.0)
 
-        return (surplusScore + savingsScore).coerceIn(0.0, 100.0)
+        val score = (surplusScore + savingsScore).coerceIn(0.0, 100.0)
+        Log.d(TAG, "Financial fitness score calculated: $score (surplusScore=$surplusScore, savingsScore=$savingsScore)")
+        return score
     }
 
     // Gamification
     fun getAchievements() = achievements.toList()
+
     private fun checkAchievements() {
         if (transactions.isNotEmpty()) unlock("first_tx")
         if (budgetGoals.size >= 5) unlock("budget_master")
@@ -364,23 +413,38 @@ object AppData {
         if (score >= 80.0) unlock("fitness_pro")
         if (score >= 95.0) unlock("fitness_elite")
     }
-    private fun unlock(id: String) { achievements.find { it.id == id }?.isUnlocked = true }
+
+    private fun unlock(id: String) {
+        val achievement = achievements.find { it.id == id }
+        if (achievement != null && !achievement.isUnlocked) {
+            achievement.isUnlocked = true
+            Log.d(TAG, "Achievement unlocked: $id")
+        }
+    }
 
     fun loadUserData(context: Context) {
-        val user = currentUser ?: return
+        val user = currentUser ?: run {
+            Log.d(TAG, "loadUserData called with no current user, skipping")
+            return
+        }
+        Log.d(TAG, "Loading all data for userId=${user.id}")
         val db = AppDatabase.getInstance(context)
 
         transactions.clear()
         db.transactionDao().getAllForUser(user.id).forEach { transactions.add(it.toModel()) }
+        Log.d(TAG, "Loaded ${transactions.size} transactions for userId=${user.id}")
 
         budgetGoals.clear()
         db.budgetGoalDao().getAllForUser(user.id).forEach { budgetGoals.add(it.toModel()) }
+        Log.d(TAG, "Loaded ${budgetGoals.size} budget goals for userId=${user.id}")
 
         financialGoals.clear()
         db.financialGoalDao().getAllForUser(user.id).forEach { financialGoals.add(it.toModel()) }
+        Log.d(TAG, "Loaded ${financialGoals.size} financial goals for userId=${user.id}")
 
         debts.clear()
         db.debtDao().getAllForUser(user.id).forEach { debts.add(it.toModel()) }
+        Log.d(TAG, "Loaded ${debts.size} debts for userId=${user.id}")
 
         // Restore custom categories for this user
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -390,6 +454,7 @@ object AppData {
         customIncomeCategories.addAll(prefs.getStringSet("custom_income_${user.id}", emptySet()) ?: emptySet())
         customSavingsCategories.clear()
         customSavingsCategories.addAll(prefs.getStringSet("custom_savings_${user.id}", emptySet()) ?: emptySet())
+        Log.d(TAG, "Restored custom categories for userId=${user.id}: expense=${customExpenseCategories.size}, income=${customIncomeCategories.size}, savings=${customSavingsCategories.size}")
 
         recalcBudgetGoals()
         checkAchievements()
@@ -412,12 +477,16 @@ object AppData {
 
     fun addCustomCategory(context: Context, type: TransactionType, name: String): Boolean {
         val all = getCategoriesForType(type)
-        if (all.any { it.equals(name, ignoreCase = true) }) return false
+        if (all.any { it.equals(name, ignoreCase = true) }) {
+            Log.d(TAG, "Custom category already exists: name=$name, type=$type")
+            return false
+        }
         when (type) {
             TransactionType.EXPENSE -> customExpenseCategories.add(name)
             TransactionType.INCOME  -> customIncomeCategories.add(name)
             TransactionType.SAVINGS -> customSavingsCategories.add(name)
         }
+        Log.d(TAG, "Custom category added: name=$name, type=$type")
         saveData(context)
         return true
     }
@@ -428,10 +497,12 @@ object AppData {
             TransactionType.INCOME  -> customIncomeCategories.remove(name)
             TransactionType.SAVINGS -> customSavingsCategories.remove(name)
         }
+        Log.d(TAG, "Custom category removed: name=$name, type=$type")
         saveData(context)
     }
 
     private fun seedDemoData(context: Context) {
+        Log.d(TAG, "Seeding demo data for seed user")
         val cal = Calendar.getInstance()
         val now = cal.time
 
@@ -478,5 +549,7 @@ object AppData {
 
         // 1 Budget Goal
         addOrUpdateBudgetGoal(context, "Rent / Mortgage", 9000.0)
+
+        Log.d(TAG, "Demo data seeding complete: ${transactions.size} transactions, ${financialGoals.size} goals, ${budgetGoals.size} budget goals")
     }
 }

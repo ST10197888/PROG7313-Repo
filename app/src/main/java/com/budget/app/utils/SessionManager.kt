@@ -37,8 +37,8 @@ object SessionManager {
     }
 
     /**
-     * Helper to wipe the session during logout.
-     * Suppressing "unused" because this is reserved for future logout implementation.
+     Helper to wipe the session during logout.
+     Suppressing "unused" because this is reserved for future logout implementation.
      */
     @Suppress("unused")
     fun clearSession(context: Context) {

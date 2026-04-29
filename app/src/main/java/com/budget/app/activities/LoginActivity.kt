@@ -2,6 +2,7 @@ package com.budget.app.activities
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ScrollView
@@ -14,6 +15,8 @@ import com.budget.app.R
 import com.budget.app.utils.AppData
 
 class LoginActivity : AppCompatActivity() {
+
+    private val TAG = "LoginActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +35,7 @@ class LoginActivity : AppCompatActivity() {
             insets
         }
 
+        Log.d(TAG, "Initialising AppData from LoginActivity")
         AppData.init(this)
 
         val etEmail    = findViewById<EditText>(R.id.etEmail)
@@ -43,18 +47,24 @@ class LoginActivity : AppCompatActivity() {
             val email = etEmail.text.toString().trim()
             val pass  = etPassword.text.toString()
 
+            Log.d(TAG, "Login attempt for email: $email")
             when {
                 email.isEmpty() -> etEmail.error = "Enter your email"
                 pass.isEmpty()  -> etPassword.error = "Enter your password"
                 AppData.login(email, pass, this) -> {
+                    Log.d(TAG, "Login successful for email: $email, navigating to MainActivity")
                     startActivity(Intent(this, MainActivity::class.java))
                     finish()
                 }
-                else -> Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
+                else -> {
+                    Log.d(TAG, "Login failed for email: $email, invalid credentials")
+                    Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
         tvRegister.setOnClickListener {
+            Log.d(TAG, "Navigating to RegisterActivity")
             startActivity(Intent(this, RegisterActivity::class.java))
         }
     }
