@@ -1,11 +1,13 @@
 package com.budget.app.fragments
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -30,13 +32,21 @@ class DebtReductionFragment : Fragment(), MainActivity.OnBackPressedListener {
     private val db by lazy { AppDatabase.getInstance(requireContext()) }
     private val currentUserId by lazy { SessionManager.getUserId(requireContext()) }
 
+    companion object {
+        private const val TAG = "DebtReductionFrag"
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_debts, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (currentUserId == -1) return
+        // Safety check to ensure we have a session before doing anything
+        if (currentUserId == -1) {
+            Log.e(TAG, "Invalid session: currentUserId is -1. Aborting setup.")
+            return
+        }
 
         val etName = view.findViewById<EditText>(R.id.etDebtName)
         val etAmount = view.findViewById<EditText>(R.id.etDebtAmount)
@@ -60,31 +70,43 @@ class DebtReductionFragment : Fragment(), MainActivity.OnBackPressedListener {
             val minPay = etMinPay.text.toString().toDoubleOrNull() ?: 0.0
 
             if (name.isNotEmpty() && amount > 0) {
-                lifecycleScope.launch(Dispatchers.IO) {
-                    val newDebt = DebtEntity(
-                        userId = currentUserId,
-                        name = name,
-                        amount = amount,
-                        interestRate = rate,
-                        minPayment = minPay,
-                        remainingAmount = amount // Initially, remaining equals total
-                    )
-                    db.debtDao().insertOrUpdate(newDebt)
+                Log.d(TAG, "Attempting to add new debt: $name, Amount: $amount")
 
-                    withContext(Dispatchers.Main) {
-                        etName.text.clear()
-                        etAmount.text.clear()
-                        etRate.text.clear()
-                        etMinPay.text.clear()
-                        refreshList()
+                lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        val newDebt = DebtEntity(
+                            userId = currentUserId,
+                            name = name,
+                            amount = amount,
+                            interestRate = rate,
+                            minPayment = minPay,
+                            remainingAmount = amount
+                        )
+                        db.debtDao().insertOrUpdate(newDebt)
+                        Log.d(TAG, "Successfully inserted/updated debt in Room DB")
+
+                        withContext(Dispatchers.Main) {
+                            etName.text.clear()
+                            etAmount.text.clear()
+                            etRate.text.clear()
+                            etMinPay.text.clear()
+                            refreshList()
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error saving debt to database", e)
                     }
                 }
+            } else {
+                Log.w(TAG, "User attempted to save invalid debt input")
+                Toast.makeText(requireContext(), "Please enter a valid name and amount", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     override fun onBackPressed(): Boolean {
+        // Scroll to top if the user is deep in the list instead of exiting immediately
         if (::rv.isInitialized && rv.computeVerticalScrollOffset() > 0) {
+            Log.d(TAG, "Back pressed: scrolling to top")
             rv.smoothScrollToPosition(0)
             return true
         }
@@ -97,7 +119,7 @@ class DebtReductionFragment : Fragment(), MainActivity.OnBackPressedListener {
         input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
 
         val dialog = AlertDialog.Builder(requireContext())
-            .setTitle("Record Payment")
+            .setTitle("Record Payment for ${debt.name}")
             .setView(input)
             .setPositiveButton("Pay", null)
             .setNegativeButton("Cancel", null)
@@ -106,20 +128,31 @@ class DebtReductionFragment : Fragment(), MainActivity.OnBackPressedListener {
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val payment = input.text.toString().toDoubleOrNull()
+                Log.d(TAG, "Processing payment input: $payment for debt ID: ${debt.id}")
+
                 when {
-                    payment == null || payment <= 0 ->
+                    payment == null || payment <= 0 -> {
                         input.error = "Enter a valid payment amount"
-                    debt.minPayment > 0 && payment < debt.minPayment ->
+                    }
+                    debt.minPayment > 0 && payment < debt.minPayment -> {
                         input.error = "Payment must be at least ${String.format("%.2f", debt.minPayment)}"
-                    payment > debt.remainingAmount ->
+                    }
+                    payment > debt.remainingAmount -> {
                         input.error = "Payment exceeds remaining balance (${String.format("%.2f", debt.remainingAmount)})"
+                    }
                     else -> {
                         lifecycleScope.launch(Dispatchers.IO) {
-                            val newRemaining = (debt.remainingAmount - payment).coerceAtLeast(0.0)
-                            db.debtDao().updateRemaining(debt.id, newRemaining)
-                            withContext(Dispatchers.Main) {
-                                refreshList()
-                                dialog.dismiss()
+                            try {
+                                val newRemaining = (debt.remainingAmount - payment).coerceAtLeast(0.0)
+                                db.debtDao().updateRemaining(debt.id, newRemaining)
+                                Log.d(TAG, "Payment of $payment applied. New balance: $newRemaining")
+
+                                withContext(Dispatchers.Main) {
+                                    refreshList()
+                                    dialog.dismiss()
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Database error applying payment", e)
                             }
                         }
                     }
@@ -131,13 +164,18 @@ class DebtReductionFragment : Fragment(), MainActivity.OnBackPressedListener {
     }
 
     private fun refreshList() {
+        Log.d(TAG, "Refreshing debt list from database")
         lifecycleScope.launch(Dispatchers.IO) {
-            val data = db.debtDao().getAllForUser(currentUserId)
-            // Using your toModel() extension/function
-            val debts: List<Debt> = data.map { it.toModel() }
+            try {
+                val data = db.debtDao().getAllForUser(currentUserId)
+                val debts: List<Debt> = data.map { it.toModel() }
 
-            withContext(Dispatchers.Main) {
-                adapter.updateData(debts)
+                withContext(Dispatchers.Main) {
+                    adapter.updateData(debts)
+                    Log.d(TAG, "RecyclerView updated with ${debts.size} items")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching debts", e)
             }
         }
     }

@@ -1,11 +1,13 @@
 package com.budget.app.fragments
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -22,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Date
+import java.util.Locale
 
 class FinancialGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
@@ -31,13 +34,22 @@ class FinancialGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
     private val db by lazy { AppDatabase.getInstance(requireContext()) }
     private val currentUserId by lazy { SessionManager.getUserId(requireContext()) }
 
+    // Log tag for debugging lifecycle and DB events
+    companion object {
+        private const val TAG = "FinancialGoalsFrag"
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_goals, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (currentUserId == -1) return
+        // Safety check: Don't load anything if we don't have a valid user session
+        if (currentUserId == -1) {
+            Log.e(TAG, "No valid user ID found in session. Aborting setup.")
+            return
+        }
 
         val etName = view.findViewById<EditText>(R.id.etGoalName)
         val etTarget = view.findViewById<EditText>(R.id.etGoalTarget)
@@ -59,29 +71,42 @@ class FinancialGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
             if (name.isNotEmpty() && targetStr.isNotEmpty()) {
                 val target = targetStr.toDoubleOrNull() ?: 0.0
                 if (target > 0) {
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        val newGoal = FinancialGoalEntity(
-                            userId = currentUserId,
-                            name = name,
-                            targetAmount = target,
-                            currentAmount = 0.0,
-                            deadline = Date() // Added required deadline
-                        )
-                        db.financialGoalDao().insertOrUpdate(newGoal)
+                    Log.d(TAG, "Creating new goal: $name with target $target")
 
-                        withContext(Dispatchers.Main) {
-                            etName.text.clear()
-                            etTarget.text.clear()
-                            refreshList()
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        try {
+                            val newGoal = FinancialGoalEntity(
+                                userId = currentUserId,
+                                name = name,
+                                targetAmount = target,
+                                currentAmount = 0.0,
+                                deadline = Date() // Set to current date as default
+                            )
+                            db.financialGoalDao().insertOrUpdate(newGoal)
+                            Log.d(TAG, "Goal successfully saved to Room.")
+
+                            withContext(Dispatchers.Main) {
+                                etName.text.clear()
+                                etTarget.text.clear()
+                                refreshList()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to insert goal into database", e)
                         }
                     }
+                } else {
+                    Log.w(TAG, "User input target was non-positive: $target")
                 }
+            } else {
+                Log.w(TAG, "Validation failed: Name or target is empty")
             }
         }
     }
 
     override fun onBackPressed(): Boolean {
+        // Quick scroll-to-top feature on back press if the user has scrolled down
         if (::rv.isInitialized && rv.computeVerticalScrollOffset() > 0) {
+            Log.d(TAG, "Back pressed: scrolling RecyclerView to top")
             rv.smoothScrollToPosition(0)
             return true
         }
@@ -90,17 +115,22 @@ class FinancialGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private fun showAddProgressDialog(goal: FinancialGoal) {
         val remaining = goal.targetAmount - goal.currentAmount
+
+        // Prevent dialog from even opening if the goal is already hit
         if (remaining <= 0) {
-            android.widget.Toast.makeText(requireContext(), "Goal already reached!", android.widget.Toast.LENGTH_SHORT).show()
+            Log.i(TAG, "User clicked completed goal: ${goal.name}")
+            Toast.makeText(requireContext(), "Goal already reached!", Toast.LENGTH_SHORT).show()
             return
         }
 
         val input = EditText(requireContext())
-        input.hint = "Amount to add (max ${String.format("%.2f", remaining)})"
+        // Fix: Added Locale.getDefault() to resolve lint warning
+        val remainingStr = String.format(Locale.getDefault(), "%.2f", remaining)
+        input.hint = "Amount to add (max $remainingStr)"
         input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
 
         val dialog = AlertDialog.Builder(requireContext())
-            .setTitle("Add Progress")
+            .setTitle("Add Progress to ${goal.name}")
             .setView(input)
             .setPositiveButton("Add", null)
             .setNegativeButton("Cancel", null)
@@ -109,17 +139,30 @@ class FinancialGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val amount = input.text.toString().toDoubleOrNull()
+
+                Log.d(TAG, "Input progress amount: $amount for goal ID: ${goal.id}")
+
                 when {
-                    amount == null || amount <= 0 ->
+                    amount == null || amount <= 0 -> {
                         input.error = "Enter a valid amount"
-                    amount > remaining ->
-                        input.error = "Cannot exceed remaining amount (${String.format("%.2f", remaining)})"
+                    }
+                    amount > remaining -> {
+                        // Fix: Added Locale.getDefault() to resolve lint warning
+                        val limit = String.format(Locale.getDefault(), "%.2f", remaining)
+                        input.error = "Cannot exceed remaining amount ($limit)"
+                    }
                     else -> {
                         lifecycleScope.launch(Dispatchers.IO) {
-                            db.financialGoalDao().addProgress(goal.id, amount)
-                            withContext(Dispatchers.Main) {
-                                refreshList()
-                                dialog.dismiss()
+                            try {
+                                db.financialGoalDao().addProgress(goal.id, amount)
+                                Log.d(TAG, "Progress updated successfully.")
+
+                                withContext(Dispatchers.Main) {
+                                    refreshList()
+                                    dialog.dismiss()
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error updating progress in DB", e)
                             }
                         }
                     }
@@ -131,14 +174,20 @@ class FinancialGoalsFragment : Fragment(), MainActivity.OnBackPressedListener {
     }
 
     private fun refreshList() {
+        Log.d(TAG, "Refreshing goal list for user: $currentUserId")
         lifecycleScope.launch(Dispatchers.IO) {
-            val data = db.financialGoalDao().getAllForUser(currentUserId)
+            try {
+                val data = db.financialGoalDao().getAllForUser(currentUserId)
 
-            // Map Entity to Domain Model using your defined .toModel() function
-            val goals: List<FinancialGoal> = data.map { it.toModel() }
+                // Map the DB entities to our clean domain model for the UI
+                val goals: List<FinancialGoal> = data.map { it.toModel() }
 
-            withContext(Dispatchers.Main) {
-                adapter.updateData(goals)
+                withContext(Dispatchers.Main) {
+                    adapter.updateData(goals)
+                    Log.d(TAG, "UI updated with ${goals.size} goals.")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error while fetching goals from database", e)
             }
         }
     }
