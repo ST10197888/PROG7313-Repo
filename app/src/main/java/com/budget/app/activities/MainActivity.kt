@@ -84,6 +84,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             loadFragment(fragment)
             true
         }
+//android studio: https://developer.android.com/guide/navigation/navigation-custom-back#implement
 
         // Handle Back Press
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {

@@ -12,7 +12,7 @@ import com.budget.app.models.*
 import com.budget.app.utils.SessionManager
 import java.util.*
 
-object AppData {
+object AppData {  // How to Use Singleton Pattern for Room Database in Android? : https://www.geeksforgeeks.org/kotlin/how-to-use-singleton-pattern-for-room-database-in-android/
 
     private const val TAG = "AppData"
     private const val PREFS_NAME = "BudgetAppPrefs"

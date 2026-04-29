@@ -13,7 +13,7 @@ import com.budget.app.R
 import com.budget.app.models.BudgetGoal
 import com.budget.app.utils.CurrencyFormatter
 
-class BudgetGoalAdapter(
+class BudgetGoalAdapter( //android developers - Create dynamic lists with RecyclerView : https://developer.android.com/develop/ui/views/layout/recyclerview
     private val data: MutableList<BudgetGoal>,
     private val onDelete: (BudgetGoal) -> Unit
 ) : RecyclerView.Adapter<BudgetGoalAdapter.ViewHolder>() {

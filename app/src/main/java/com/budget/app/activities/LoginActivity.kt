@@ -14,7 +14,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.budget.app.R
 import com.budget.app.utils.AppData
 
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : AppCompatActivity() { // GeeksforGeeks -Android - Login and Logout Using Shared Preferences in Kotlin  : https://www.geeksforgeeks.org/kotlin/android-login-and-logout-using-shared-preferences-in-kotlin/#:~:text=Android%20%2D%20Login%20and%20Logout%20Using%20Shared%20Preferences%20in%20Kotlin
 
     private val TAG = "LoginActivity"
 

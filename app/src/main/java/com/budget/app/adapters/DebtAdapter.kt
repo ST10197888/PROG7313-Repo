@@ -10,7 +10,7 @@ import com.budget.app.R
 import com.budget.app.models.Debt
 import com.budget.app.utils.CurrencyFormatter
 
-class DebtAdapter(
+class DebtAdapter( //android developers - Create dynamic lists with RecyclerView : https://developer.android.com/develop/ui/views/layout/recyclerview
     private var debts: List<Debt>,
     private val onPaymentClick: (Debt) -> Unit
 ) : RecyclerView.Adapter<DebtAdapter.ViewHolder>() {
