@@ -2,6 +2,8 @@ name: Android Build
 
 on:
   push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -19,11 +21,11 @@ jobs:
           distribution: zulu
           java-version: 17
 
-      - name: Make Gradle executable
-        run: chmod +x ./gradlew
+      - name: Grant execute permission
+        run: chmod +x gradlew
 
       - name: Run tests
         run: ./gradlew test
 
-      - name: Build debug APK
+      - name: Build APK
         run: ./gradlew assembleDebug
