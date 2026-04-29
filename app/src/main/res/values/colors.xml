@@ -1,27 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#2196F3</color>
-    <color name="colorPrimaryDark">#1976D2</color>
-    <color name="colorAccent">#03DAC5</color>
-    <color name="accent_blue">#2196F3</color>
-    <color name="income_green">#4CAF50</color>
-    <color name="expense_red">#F44336</color>
+    <color name="colorPrimary">#003366</color>
+    <color name="colorPrimaryDark">#002244</color>
+    <color name="colorAccent">#00A3E0</color>
 
     <!-- Semantic Colors -->
-    <color name="background_grey">#F5F5F5</color>
+    <color name="income_green">#00B4A3</color>
+    <color name="expense_red">#FF6B4A</color>
+    <color name="savings_blue">#00A3E0</color>
+    <color name="debt_warning">#FF8C42</color>
+
+    <!-- Backgrounds -->
+    <color name="background_grey">#F5F7FA</color>
     <color name="card_background">#FFFFFF</color>
-    <color name="header_background">#2196F3</color>
+    <color name="header_background">#003366</color>
+
+    <!-- Text Colors -->
+    <color name="text_primary">#1A2C3E</color>
+    <color name="text_secondary">#6B7A8A</color>
+    <color name="text_hint">#9AA6B5</color>
+
+    <!-- Divider / Border -->
+    <color name="divider">#E1E5EB</color>
+
+    <!-- Status / Feedback -->
+    <color name="warning">#FFC107</color>
+    <color name="error">#FF6B4A</color>
+    <color name="success">#00B4A3</color>
+
+    <!-- Profile / Avatar -->
+    <color name="profile_card_bg">#003366</color>
+    <color name="profile_avatar_circle_bg">#E8F0FE</color>
     <color name="header_on_background">#FFFFFF</color>
-    <color name="text_primary">#212121</color>
-    <color name="text_secondary">#757575</color>
 
-    <!-- Profile -->
-    <color name="profile_card_bg">#2196F3</color>
-    <color name="profile_avatar_circle_bg">#FFFFFF</color>
-
+    <!-- White variations -->
     <color name="white">#FFFFFF</color>
-    <color name="black">#000000</color>
-    <color name="dashboard_income_bg">#E8F5E9</color>
-    <color name="dashboard_expense_bg">#FFEBEE</color>
-    <color name="dashboard_balance_bg">#E3F2FD</color>
+    <color name="white_soft">#F9FBFD</color>
 </resources>
