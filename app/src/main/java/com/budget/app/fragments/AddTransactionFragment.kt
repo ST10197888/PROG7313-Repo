@@ -473,4 +473,24 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         super.onDestroyView()
         countDownTimer?.cancel()
     }
+
+    private fun getFileSize(uri: Uri): Long {
+        return try {
+            requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                cursor.moveToFirst()
+                cursor.getLong(sizeIndex)
+            } ?: 0L
+        } catch (e: Exception) { 0L }
+    }
+
+    private fun getFileName(uri: Uri): String {
+        return try {
+            requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                cursor.moveToFirst()
+                cursor.getString(nameIndex)
+            } ?: "Unknown File"
+        } catch (e: Exception) { "Attachment" }
+    }
 }
