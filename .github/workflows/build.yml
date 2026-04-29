@@ -1,39 +1,46 @@
-# Name of the workflow (shows in GitHub Actions)
+# Name of the workflow (shown in GitHub Actions)
 name: Android Build
 
-# When this workflow should run
+# When the workflow should run
 on:
   push:
     branches:
-      - main   # Runs automatically when code is pushed to main branch
-  workflow_dispatch:   # Allows you to run it manually from GitHub
+      - main   # Runs automatically when code is pushed to main
+  workflow_dispatch:   # Allows manual run from GitHub
 
-# Jobs = main tasks to execute
+# Jobs (main tasks)
 jobs:
   build:
-    name: Build Android App   # Display name in GitHub Actions
-    runs-on: ubuntu-latest    # Uses a Linux machine in the cloud
+    name: Build Android App
+    runs-on: ubuntu-latest   # Uses a Linux machine
 
     steps:
-      # Step 1: Get your code from the repository
+      # Step 1: Checkout your code from GitHub
       - name: Checkout project
         uses: actions/checkout@v4
 
-      # Step 2: Install Java (required for Android builds)
+      # Step 2: Setup Java (required for Android)
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: zulu      # Java distribution
-          java-version: 17        # Java version used for the project
+          distribution: zulu
+          java-version: 17
 
       # Step 3: Give permission to run Gradle
       - name: Grant execute permission
         run: chmod +x gradlew
 
-      # Step 4: Run unit tests (checks if your code works)
+      # Step 4: Run unit tests
       - name: Run tests
         run: ./gradlew test
 
-      # Step 5: Build the APK (actual Android app file)
+      # Step 5: Build the APK
       - name: Build APK
         run: ./gradlew assembleDebug
+
+      # Step 6: Upload APK so it can be downloaded from GitHub
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
