@@ -1,72 +1,67 @@
 package com.budget.app
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.matcher.ViewMatchers.*
 import org.junit.Test
 import org.junit.runner.RunWith
 
-// Instrumented tests (run on Android device/emulator)
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
 
-    // Test: Verify correct app context (basic UI/environment test)
+    /**
+     * TEST 1: App launches and key UI elements are visible
+     */
     @Test
-    fun appContext_isCorrect() {
-        println("=== UI TEST START: appContext_isCorrect ===")
+    fun appLaunchDisplaysMainUI() {
 
-        // Arrange
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        println("Starting UI test: appLaunchDisplaysMainUI")
 
-        // Log details
-        println("Expected package: com.budget.app")
-        println("Actual package: ${appContext.packageName}")
+        // Check balance text is visible
+        onView(withId(R.id.tvBalance))
+            .check(matches(isDisplayed()))
 
-        // Assert
-        assertEquals("com.budget.app", appContext.packageName)
+        println("Balance view is displayed ✅")
 
-        println("=== UI TEST PASSED: appContext_isCorrect ===\n")
+        // Check floating action button exists
+        onView(withId(R.id.fabAdd))
+            .check(matches(isDisplayed()))
+
+        println("FAB button is visible ✅")
     }
 
-    // Test: Check app context is available (simulates app launch readiness)
+    /**
+     * TEST 2: User clicks Add Transaction (REAL USER FLOW)
+     */
     @Test
-    fun appLaunchContext_isAvailable() {
-        println("=== UI TEST START: appLaunchContext_isAvailable ===")
+    fun clickAddTransactionCard() {
 
-        // Arrange
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        println("Starting UI test: clickAddTransactionCard")
 
-        // Log
-        println("Checking if app context exists...")
+        // Click "Add Transaction" card
+        onView(withId(R.id.cardActionAdd))
+            .perform(click())
 
-        // Assert
-        assertNotNull(appContext)
-        assertEquals("com.budget.app", appContext.packageName)
+        println("Clicked Add Transaction card ✅")
 
-        println("App context is valid and ready")
-
-        println("=== UI TEST PASSED: appLaunchContext_isAvailable ===\n")
+        // (Optional) Add assertion if new screen appears
+        // Example:
+        // onView(withText("Add Transaction")).check(matches(isDisplayed()))
     }
 
-    // Test: Simulated user flow readiness (navigation/environment check)
+    /**
+     * TEST 3: Floating button interaction
+     */
     @Test
-    fun basicUserFlow_environmentIsReady() {
-        println("=== UI TEST START: basicUserFlow_environmentIsReady ===")
+    fun clickFloatingAddButton() {
 
-        // Arrange
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        println("Starting UI test: clickFloatingAddButton")
 
-        // Simulated flow logging
-        println("Step 1: App launched")
-        println("Step 2: Context retrieved")
-        println("Step 3: Package validated")
-        println("Step 4: Ready for user interaction")
+        onView(withId(R.id.fabAdd))
+            .perform(click())
 
-        // Assert
-        assertNotNull(appContext)
-        assertEquals("com.budget.app", appContext.packageName)
-
-        println("=== UI TEST PASSED: basicUserFlow_environmentIsReady ===\n")
+        println("Floating button clicked ✅")
     }
 }
