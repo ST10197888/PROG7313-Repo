@@ -76,6 +76,7 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
         }
 
         btnFilter.setOnClickListener {
+            // Using the ic_filter drawable we just added to the project for the filter button
             showDatePicker()
         }
 
@@ -188,7 +189,8 @@ class TransactionsFragment : Fragment(), MainActivity.OnBackPressedListener {
             tvActiveFilter.visibility = View.VISIBLE
         } else {
             tvActiveFilter.text = "Filtering: All Time"
-            // Keep it visible to show current state
+            // We're using accent_blue here for consistent UI coloring as per the new updates
+            tvActiveFilter.setTextColor(requireContext().getColor(R.color.accent_blue))
         }
     }
 

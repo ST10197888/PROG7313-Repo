@@ -29,6 +29,11 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Fragment for adding new transactions.
+ * Features: Income/Expense/Savings logic, Camera/Gallery attachments,
+ * Real-time budget usage tracking, and a custom simulated processing overlay.
+ */
 class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private var selectedAttachmentUri: Uri? = null
@@ -46,16 +51,16 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
     private lateinit var layoutAttachment: View
     private var scrollView: ScrollView? = null
 
-    // Custom Budget Views
+    // Custom Budget Selection logic
     private lateinit var layoutCustomBudget: View
     private lateinit var spinnerCustomBudget: Spinner
 
-    // Usage Indicator Views
+    // Real-time Usage Indicator Views
     private lateinit var layoutUsageIndicator: View
     private lateinit var pbUsage: ProgressBar
     private lateinit var tvUsagePercent: TextView
 
-    // Overlay Views
+    // Simulated Processing Overlay Views
     private lateinit var overlayContainer: View
     private lateinit var progressBarCard: CardView
     private lateinit var tvProgressBar: TextView
@@ -63,7 +68,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
 
     private var countDownTimer: CountDownTimer? = null
 
-    // Configuration
+    // Configuration for the character-based progress bar
     private val TOTAL_DURATION_MS   = 3000L
     private val TICK_INTERVAL_MS    = 30L
     private val PROGRESS_BAR_LENGTH = 20
@@ -84,6 +89,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         }
     }
 
+    // Gallery launcher for attachments
     private val galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val uri = result.data?.data
@@ -93,6 +99,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         }
     }
 
+    // Camera launcher for attachments
     private val cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             photoFile?.let {
@@ -126,7 +133,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         pbUsage = view.findViewById(R.id.pbUsage)
         tvUsagePercent = view.findViewById(R.id.tvUsagePercent)
 
-        // Overlay UI
+        // Overlay UI setup
         overlayContainer = view.findViewById(R.id.overlayContainer)
         progressBarCard = view.findViewById(R.id.progressBarCard)
         tvProgressBar = view.findViewById(R.id.tvProgressBar)
@@ -139,7 +146,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
             spinnerCat.adapter = adapter
             layoutAttachment.visibility = if (type == TransactionType.EXPENSE) View.VISIBLE else View.GONE
 
-            // Handle Custom Budgets for Expenses
+            // Handle Custom Budgets for Expenses - lets user link to non-standard goals
             if (type == TransactionType.EXPENSE) {
                 val customBudgets = AppData.getBudgetGoals().filter { goal ->
                     !AppData.expenseCategories.contains(goal.category)
@@ -172,7 +179,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
             updateCategories(type)
         }
 
-        // Apply Arguments if present
+        // Apply Arguments if fragment was opened from a specific context (e.g. category screen)
         val initialTypeStr = arguments?.getString(ARG_TYPE)
         val initialCategory = arguments?.getString(ARG_CATEGORY)
 
@@ -200,7 +207,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                updateUsageIndicator()
+                updateUsageIndicator() // Real-time budget tracking as user types
             }
         })
 
@@ -210,7 +217,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
 
         btnSave.setOnClickListener {
             if (validateInputs()) {
-                startTransactionProcessing()
+                startTransactionProcessing() // Start that cool character progress bar overlay
             }
         }
     }
@@ -303,6 +310,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         return false
     }
 
+    // Logic for the real-time budget usage indicator
     private fun updateUsageIndicator() {
         val type = when (rgType.checkedRadioButtonId) {
             R.id.rbIncome -> TransactionType.INCOME
@@ -336,7 +344,9 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         if (usagePercent > 100) {
             tvUsagePercent.setTextColor(requireContext().getColor(R.color.expense_red))
         } else {
-            tvUsagePercent.setTextColor(requireContext().getColor(R.color.text_secondary))
+            // Added this accent_blue color because it was missing earlier and causing some issues.
+            // Using it here for a clean 'safe' status color.
+            tvUsagePercent.setTextColor(requireContext().getColor(R.color.accent_blue))
         }
     }
 
@@ -379,6 +389,7 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
         }.start()
     }
 
+    // Custom character-based progress bar implementation [████░░░░]
     private fun updateProgressBarText(progress: Float) {
         val filledCount = (progress * PROGRESS_BAR_LENGTH).toInt()
         val emptyCount  = PROGRESS_BAR_LENGTH - filledCount
@@ -461,25 +472,5 @@ class AddTransactionFragment : Fragment(), MainActivity.OnBackPressedListener {
     override fun onDestroyView() {
         super.onDestroyView()
         countDownTimer?.cancel()
-    }
-
-    private fun getFileSize(uri: Uri): Long {
-        return try {
-            requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-                cursor.moveToFirst()
-                cursor.getLong(sizeIndex)
-            } ?: 0L
-        } catch (e: Exception) { 0L }
-    }
-
-    private fun getFileName(uri: Uri): String {
-        return try {
-            requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                cursor.moveToFirst()
-                cursor.getString(nameIndex)
-            } ?: "Unknown File"
-        } catch (e: Exception) { "Attachment" }
     }
 }
