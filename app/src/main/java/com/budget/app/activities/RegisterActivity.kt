@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.budget.app.R
+import com.budget.app.firebase.FirebaseManager
 import com.budget.app.utils.AppData
 
 class RegisterActivity : AppCompatActivity() {
@@ -51,19 +52,39 @@ class RegisterActivity : AppCompatActivity() {
 
             Log.d(TAG, "Registration attempt for email: $email")
             when {
-                name.isEmpty()          -> etName.error = "Enter your name"
-                email.isEmpty()         -> etEmail.error = "Enter your email"
-                !email.contains("@")    -> etEmail.error = "Enter a valid email"
-                pass.length < 6         -> etPassword.error = "Password must be at least 6 characters"
-                pass != confirm         -> etConfirm.error = "Passwords do not match"
+                name.isEmpty()       -> etName.error = "Enter your name"
+                email.isEmpty()      -> etEmail.error = "Enter your email"
+                !email.contains("@") -> etEmail.error = "Enter a valid email"
+                pass.length < 6      -> etPassword.error = "Password must be at least 6 characters"
+                pass != confirm      -> etConfirm.error = "Passwords do not match"
                 !AppData.register(name, email, pass, this) -> {
                     Log.d(TAG, "Registration failed for email: $email, already registered")
                     Toast.makeText(this, "Email already registered", Toast.LENGTH_SHORT).show()
                 }
                 else -> {
-                    Log.d(TAG, "Registration successful for email: $email")
-                    Toast.makeText(this, "Account created! Please log in.", Toast.LENGTH_SHORT).show()
-                    finish()
+                    // Local registration succeeded — now register in Firebase
+                    Log.d(TAG, "Local registration successful, registering with Firebase: $email")
+                    btnReg.isEnabled = false
+
+                    FirebaseManager.registerUser(
+                        email = email,
+                        password = pass,
+                        name = name,
+                        onSuccess = {
+                            Log.d(TAG, "Firebase registration successful for email: $email")
+                            runOnUiThread {
+                                Toast.makeText(this, "Account created! Please log in.", Toast.LENGTH_SHORT).show()
+                                finish()
+                            }
+                        },
+                        onFailure = { error ->
+                            Log.e(TAG, "Firebase registration failed for email: $email, error: $error")
+                            runOnUiThread {
+                                btnReg.isEnabled = true
+                                Toast.makeText(this, "Registration failed: $error", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    )
                 }
             }
         }

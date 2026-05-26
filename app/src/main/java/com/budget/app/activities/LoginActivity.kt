@@ -12,9 +12,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.budget.app.R
+import com.budget.app.firebase.FirebaseManager
 import com.budget.app.utils.AppData
 
-class LoginActivity : AppCompatActivity() { // GeeksforGeeks -Android - Login and Logout Using Shared Preferences in Kotlin  : https://www.geeksforgeeks.org/kotlin/android-login-and-logout-using-shared-preferences-in-kotlin/#:~:text=Android%20%2D%20Login%20and%20Logout%20Using%20Shared%20Preferences%20in%20Kotlin
+class LoginActivity : AppCompatActivity() {
 
     private val TAG = "LoginActivity"
 
@@ -47,18 +48,69 @@ class LoginActivity : AppCompatActivity() { // GeeksforGeeks -Android - Login an
             val email = etEmail.text.toString().trim()
             val pass  = etPassword.text.toString()
 
-            Log.d(TAG, "Login attempt for email: $email")
             when {
                 email.isEmpty() -> etEmail.error = "Enter your email"
                 pass.isEmpty()  -> etPassword.error = "Enter your password"
-                AppData.login(email, pass, this) -> {
-                    Log.d(TAG, "Login successful for email: $email, navigating to MainActivity")
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()
-                }
                 else -> {
-                    Log.d(TAG, "Login failed for email: $email, invalid credentials")
-                    Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
+                    btnLogin.isEnabled = false
+                    Log.d(TAG, "Login attempt for email: $email")
+
+                    FirebaseManager.loginUser(
+                        email = email,
+                        password = pass,
+                        onSuccess = {
+                            Log.d(TAG, "Firebase login successful for email: $email")
+
+                            // Try local login first
+                            if (AppData.login(email, pass, this)) {
+                                // User exists locally — proceed normally
+                                Log.d(TAG, "Local login successful, navigating to MainActivity")
+                                runOnUiThread {
+                                    startActivity(Intent(this, MainActivity::class.java))
+                                    finish()
+                                }
+                            } else {
+                                // Firebase knows this user but local DB doesn't
+                                // This happens when: user was added via Firebase Console,
+                                // or registered on a different device
+                                Log.d(TAG, "User not in local DB — fetching Firebase profile to register locally")
+
+                                FirebaseManager.fetchUserProfile { profile ->
+                                    if (profile != null) {
+                                        val (name, _) = profile
+                                        Log.d(TAG, "Profile fetched: name=$name — registering locally")
+
+                                        // Register them locally so the app works fully
+                                        AppData.register(name, email, pass, this)
+
+                                        // Now log in locally with their data loaded
+                                        AppData.login(email, pass, this)
+                                    } else {
+                                        // No profile in DB either (Console-created user with no profile node)
+                                        // Use email prefix as fallback name
+                                        val fallbackName = email.substringBefore("@")
+                                            .replaceFirstChar { it.uppercaseChar() }
+                                        Log.d(TAG, "No profile found — using fallback name: $fallbackName")
+                                        AppData.register(fallbackName, email, pass, this)
+                                        AppData.login(email, pass, this)
+                                    }
+
+                                    runOnUiThread {
+                                        btnLogin.isEnabled = true
+                                        startActivity(Intent(this, MainActivity::class.java))
+                                        finish()
+                                    }
+                                }
+                            }
+                        },
+                        onFailure = { error ->
+                            Log.e(TAG, "Firebase login failed for email: $email, error: $error")
+                            runOnUiThread {
+                                btnLogin.isEnabled = true
+                                Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
                 }
             }
         }

@@ -8,8 +8,8 @@ import com.budget.app.database.DebtEntity
 import com.budget.app.database.FinancialGoalEntity
 import com.budget.app.database.TransactionEntity
 import com.budget.app.database.UserEntity
+import com.budget.app.firebase.FirebaseManager
 import com.budget.app.models.*
-import com.budget.app.utils.SessionManager
 import java.util.*
 
 object AppData {  // How to Use Singleton Pattern for Room Database in Android? : https://www.geeksforgeeks.org/kotlin/how-to-use-singleton-pattern-for-room-database-in-android/
@@ -99,7 +99,7 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
     )
 
     init {
-        register("Seed User", "seed@budget.com", "password123")
+        // Seed user removed — seedDemoData() preserved below if needed for testing
         initAchievements()
     }
 
@@ -109,8 +109,6 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         achievements.add(Achievement("budget_master", "Budget Master", "Set 5 budget goals", 0))
         achievements.add(Achievement("goal_setter", "Goal Setter", "Create your first financial goal", 0))
         achievements.add(Achievement("debt_slayer", "Debt Slayer", "Pay off a debt completely", 0))
-
-        // Fitness Score Tiered Achievements
         achievements.add(Achievement("fitness_starter", "Financial Starter", "Reach a fitness score of 50%", 0))
         achievements.add(Achievement("fitness_pro", "Financial Athlete", "Reach a fitness score of 80%", 0))
         achievements.add(Achievement("fitness_elite", "Financial Elite", "Reach a fitness score of 95%", 0))
@@ -127,7 +125,6 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         }
         Log.d(TAG, "Loaded ${users.size} users from database, nextUserId=$nextUserId")
 
-        // Restore current user session if exists
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val savedUserId = prefs.getInt("current_user_id", -1)
         if (savedUserId != -1) {
@@ -138,12 +135,6 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
             Log.d(TAG, "No saved session found")
         }
 
-        if (users.none { user -> user.email == "seed@budget.com" }) {
-            Log.d(TAG, "Seed user not found, re-registering")
-            register("Seed User", "seed@budget.com", "password123")
-        }
-
-        // Load saved data for current user if exists
         loadUserData(context)
 
         if (transactions.isEmpty()) {
@@ -171,6 +162,9 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         return true
     }
 
+    /**
+     * Login — now also syncs data down from Firebase if the user is signed in.
+     */
     fun login(email: String, password: String, context: Context): Boolean {
         Log.d(TAG, "Login attempt for email: $email")
         val user = users.find { it.email.equals(email, ignoreCase = true) && it.password == password }
@@ -180,9 +174,9 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
             SessionManager.setUserId(context, user.id)
             loadUserData(context)
             saveData(context)
-            if (user.email == "seed@budget.com" && transactions.isEmpty()) {
-                Log.d(TAG, "Seed user has no transactions, seeding demo data")
-                seedDemoData(context)
+            // If Firebase is also signed in, sync down from cloud
+            if (FirebaseManager.isSignedIn) {
+                syncFromFirebase(context)
             }
         } else {
             Log.d(TAG, "Login failed for email: $email, no matching user found")
@@ -193,6 +187,7 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
     fun logout() {
         Log.d(TAG, "Logging out userId=${currentUser?.id}")
         currentUser = null
+        FirebaseManager.signOut()
     }
 
     fun saveData(context: Context) {
@@ -210,7 +205,74 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
             .apply()
     }
 
+    // ---------------------------------------------------------------------------
+    // Firebase sync helpers
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Pull all data for the current Firebase user down and merge into local state.
+     * Called after login when Firebase auth is active.
+     */
+    fun syncFromFirebase(context: Context) {
+        Log.d(TAG, "Syncing data from Firebase")
+        FirebaseManager.loadTransactions { fbTxs ->
+            fbTxs.forEach { fbTx ->
+                if (transactions.none { it.id == fbTx.id }) {
+                    transactions.add(fbTx)
+                    // Persist locally so offline works
+                    currentUser?.let { user ->
+                        val db = AppDatabase.getInstance(context)
+                        db.transactionDao().insert(TransactionEntity.fromModel(fbTx, user.id))
+                    }
+                }
+            }
+            recalcBudgetGoals()
+            checkAchievements()
+            Log.d(TAG, "Firebase sync complete: ${fbTxs.size} transactions received")
+        }
+
+        FirebaseManager.loadBudgetGoals { fbGoals ->
+            fbGoals.forEach { fbGoal ->
+                val existing = budgetGoals.find { it.category == fbGoal.category }
+                if (existing == null) {
+                    budgetGoals.add(fbGoal)
+                    currentUser?.let { user ->
+                        val db = AppDatabase.getInstance(context)
+                        db.budgetGoalDao().insertOrUpdate(BudgetGoalEntity.fromModel(fbGoal, user.id))
+                    }
+                }
+            }
+        }
+
+        FirebaseManager.loadFinancialGoals { fbGoals ->
+            fbGoals.forEach { fbGoal ->
+                if (financialGoals.none { it.id == fbGoal.id }) {
+                    financialGoals.add(fbGoal)
+                    currentUser?.let { user ->
+                        val db = AppDatabase.getInstance(context)
+                        db.financialGoalDao().insertOrUpdate(FinancialGoalEntity.fromModel(fbGoal, user.id))
+                    }
+                }
+            }
+        }
+
+        FirebaseManager.loadDebts { fbDebts ->
+            fbDebts.forEach { fbDebt ->
+                if (debts.none { it.id == fbDebt.id }) {
+                    debts.add(fbDebt)
+                    currentUser?.let { user ->
+                        val db = AppDatabase.getInstance(context)
+                        db.debtDao().insertOrUpdate(DebtEntity.fromModel(fbDebt, user.id))
+                    }
+                }
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Transactions
+    // ---------------------------------------------------------------------------
+
     fun addTransaction(
         context: Context,
         title: String, amount: Double, type: TransactionType,
@@ -220,13 +282,15 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         Log.d(TAG, "Adding transaction: title=$title, amount=$amount, type=$type, category=$category")
         val transaction = Transaction(0, title, amount, type, category, date, notes, attachmentUri, attachmentName)
 
-        // Save to Room DB
         val db = AppDatabase.getInstance(context)
         currentUser?.let { user ->
             val id = db.transactionDao().insert(TransactionEntity.fromModel(transaction, user.id)).toInt()
             val finalTx = transaction.copy(id = id)
             transactions.add(finalTx)
-            Log.d(TAG, "Transaction saved to database with id=$id, total transactions=${transactions.size}")
+            Log.d(TAG, "Transaction saved to Room with id=$id, total transactions=${transactions.size}")
+
+            // Mirror to Firebase
+            FirebaseManager.saveTransaction(finalTx)
         }
 
         recalcBudgetGoals()
@@ -239,6 +303,10 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         val db = AppDatabase.getInstance(context)
         db.transactionDao().deleteById(id)
         Log.d(TAG, "Transaction id=$id removed, remaining transactions=${transactions.size}")
+
+        // Mirror delete to Firebase
+        FirebaseManager.deleteTransaction(id)
+
         recalcBudgetGoals()
         checkAchievements()
     }
@@ -264,7 +332,10 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         }.sortedByDescending { it.date }
     }
 
+    // ---------------------------------------------------------------------------
     // Budgeting
+    // ---------------------------------------------------------------------------
+
     fun getBudgetGoals(): List<BudgetGoal> = budgetGoals.toList()
     fun getBudgetGoalForCategory(category: String): BudgetGoal? = budgetGoals.find { it.category == category }
 
@@ -288,6 +359,9 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
             Log.d(TAG, "Budget goal persisted for category=$category, userId=${user.id}")
         }
 
+        // Mirror to Firebase
+        FirebaseManager.saveBudgetGoal(goal)
+
         recalcBudgetGoals()
         checkAchievements()
     }
@@ -300,6 +374,8 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
             db.budgetGoalDao().deleteByCategory(category, user.id)
             Log.d(TAG, "Budget goal deleted from database for category=$category, userId=${user.id}")
         }
+        // Mirror delete to Firebase
+        FirebaseManager.deleteBudgetGoal(category)
     }
 
     private fun recalcBudgetGoals() {
@@ -315,7 +391,10 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         return getTotalIncome() - totalAllocated
     }
 
+    // ---------------------------------------------------------------------------
     // Goals
+    // ---------------------------------------------------------------------------
+
     fun getFinancialGoals() = financialGoals.toList()
     fun getFinancialGoalByName(name: String): FinancialGoal? = financialGoals.find { it.name == name }
 
@@ -326,8 +405,10 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         val db = AppDatabase.getInstance(context)
         currentUser?.let { user ->
             val id = db.financialGoalDao().insertOrUpdate(FinancialGoalEntity.fromModel(goal, user.id)).toInt()
-            financialGoals.add(goal.copy(id = id))
+            val finalGoal = goal.copy(id = id)
+            financialGoals.add(finalGoal)
             Log.d(TAG, "Financial goal saved with id=$id, total goals=${financialGoals.size}")
+            FirebaseManager.saveFinancialGoal(finalGoal)
         }
         checkAchievements()
     }
@@ -340,10 +421,14 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
             currentUser?.let { user ->
                 db.financialGoalDao().insertOrUpdate(FinancialGoalEntity.fromModel(it, user.id))
             }
+            FirebaseManager.saveFinancialGoal(it)
         }
     }
 
+    // ---------------------------------------------------------------------------
     // Debts
+    // ---------------------------------------------------------------------------
+
     fun getDebts() = debts.toList()
 
     fun addDebt(context: Context, name: String, amount: Double, rate: Double, minPay: Double) {
@@ -352,12 +437,11 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         val db = AppDatabase.getInstance(context)
 
         currentUser?.let { user ->
-            // We use a Coroutine or ensure this runs on a background thread if your Room is sync
             val id = db.debtDao().insertOrUpdate(DebtEntity.fromModel(debt, user.id)).toInt()
-
-            // IMPORTANT: Add to the list so the UI sees it!
-            debts.add(debt.copy(id = id))
+            val finalDebt = debt.copy(id = id)
+            debts.add(finalDebt)
             Log.d(TAG, "Debt saved with id=$id, total debts=${debts.size}")
+            FirebaseManager.saveDebt(finalDebt)
         }
         checkAchievements()
     }
@@ -375,12 +459,15 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
             currentUser?.let { user ->
                 db.debtDao().insertOrUpdate(DebtEntity.fromModel(it, user.id))
             }
-            // Record payment as a transaction for reporting
+            FirebaseManager.saveDebt(it)
             addTransaction(context, "Debt Payment: ${it.name}", amount, TransactionType.EXPENSE, "Debt Payment")
         }
     }
 
+    // ---------------------------------------------------------------------------
     // Fitness Score
+    // ---------------------------------------------------------------------------
+
     fun getFinancialFitnessScore(): Double {
         val income = getTotalIncome()
         if (income <= 0) return 0.0
@@ -399,7 +486,41 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         return score
     }
 
+    // ---------------------------------------------------------------------------
+    // Budget Goals — monthly compliance (PoE requirement)
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Returns per-category compliance data for the past month.
+     * Each entry is: category, spentAmount, minGoal, maxGoal.
+     * Used by the Dashboard compliance visual.
+     */
+    fun getMonthlyGoalCompliance(): List<GoalCompliance> {
+        val cal = Calendar.getInstance()
+        cal.add(Calendar.MONTH, -1)
+        val month = cal.get(Calendar.MONTH)
+        val year = cal.get(Calendar.YEAR)
+        val monthTxs = getTransactionsForMonth(month, year)
+
+        val spentMap = monthTxs.filter { it.type == TransactionType.EXPENSE }
+            .groupBy { it.category }
+            .mapValues { it.value.sumOf { t -> t.amount } }
+
+        return budgetGoals.map { goal ->
+            val spent = spentMap[goal.category] ?: 0.0
+            GoalCompliance(
+                category = goal.category,
+                spent = spent,
+                minGoal = goal.minAmount,
+                maxGoal = goal.limitAmount
+            )
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Gamification
+    // ---------------------------------------------------------------------------
+
     fun getAchievements() = achievements.toList()
 
     private fun checkAchievements() {
@@ -421,6 +542,10 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
             Log.d(TAG, "Achievement unlocked: $id")
         }
     }
+
+    // ---------------------------------------------------------------------------
+    // Local data loading
+    // ---------------------------------------------------------------------------
 
     fun loadUserData(context: Context) {
         val user = currentUser ?: run {
@@ -446,7 +571,6 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         db.debtDao().getAllForUser(user.id).forEach { debts.add(it.toModel()) }
         Log.d(TAG, "Loaded ${debts.size} debts for userId=${user.id}")
 
-        // Restore custom categories for this user
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         customExpenseCategories.clear()
         customExpenseCategories.addAll(prefs.getStringSet("custom_expense_${user.id}", emptySet()) ?: emptySet())
@@ -501,6 +625,7 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         saveData(context)
     }
 
+    // Preserved for testing — call seedDemoData(context) to re-enable
     private fun seedDemoData(context: Context) {
         Log.d(TAG, "Seeding demo data for seed user")
         val cal = Calendar.getInstance()
@@ -509,46 +634,39 @@ object AppData {  // How to Use Singleton Pattern for Room Database in Android? 
         cal.add(Calendar.MONTH, -1)
         val prev = cal.time
 
-        // 5 INCOME
         addTransaction(context, "Salary", 25000.0, TransactionType.INCOME, "Salary", date = prev)
         addTransaction(context, "Freelance Project", 5000.0, TransactionType.INCOME, "Freelance / Contract Work", date = prev)
         addTransaction(context, "Salary", 25000.0, TransactionType.INCOME, "Salary", date = now)
         addTransaction(context, "Project Bonus", 3000.0, TransactionType.INCOME, "Bonus", date = now)
         addTransaction(context, "Stock Dividends", 1500.0, TransactionType.INCOME, "Dividends", date = now)
 
-        // 5 EXPENSES
         addTransaction(context, "Monthly Rent", 8500.0, TransactionType.EXPENSE, "Rent / Mortgage", date = prev)
         addTransaction(context, "Grocery Shopping", 2200.0, TransactionType.EXPENSE, "Food & Groceries", date = prev)
         addTransaction(context, "Internet Bill", 600.0, TransactionType.EXPENSE, "Internet & Phone", date = prev)
         addTransaction(context, "Monthly Rent", 8500.0, TransactionType.EXPENSE, "Rent / Mortgage", date = now)
         addTransaction(context, "Dinner Out", 800.0, TransactionType.EXPENSE, "Eating Out / Restaurants", date = now)
 
-        // 5 SAVINGS
         addTransaction(context, "Emergency Fund Contribution", 2000.0, TransactionType.SAVINGS, "Emergency Fund", date = prev)
         addTransaction(context, "Retirement Savings", 3000.0, TransactionType.SAVINGS, "Retirement Fund", date = prev)
         addTransaction(context, "Car Fund", 1500.0, TransactionType.SAVINGS, "Car Fund", date = prev)
         addTransaction(context, "Emergency Fund Contribution", 2000.0, TransactionType.SAVINGS, "Emergency Fund", date = now)
         addTransaction(context, "Holiday Savings", 2500.0, TransactionType.SAVINGS, "Holiday / Travel Fund", date = now)
 
-        // 3 DEBT PAYMENTS
         addTransaction(context, "Credit Card Payment", 1200.0, TransactionType.EXPENSE, "Debt Payment", date = prev)
         addTransaction(context, "Personal Loan Payment", 2000.0, TransactionType.EXPENSE, "Debt Payment", date = prev)
         addTransaction(context, "Credit Card Payment", 1500.0, TransactionType.EXPENSE, "Debt Payment", date = now)
 
-        // 4 FINANCIAL GOALS
         addFinancialGoal(context, "Emergency Fund", 50000.0, Calendar.getInstance().apply { add(Calendar.YEAR, 1) }.time)
         addFinancialGoal(context, "Retirement Fund", 1000000.0, Calendar.getInstance().apply { add(Calendar.YEAR, 30) }.time)
         addFinancialGoal(context, "New Car", 150000.0, Calendar.getInstance().apply { add(Calendar.YEAR, 2) }.time)
         addFinancialGoal(context, "Holiday 2024", 15000.0, Calendar.getInstance().apply { add(Calendar.MONTH, 6) }.time)
 
-        // Update progress for some goals
         updateGoalProgress(context, financialGoals[0].id, 4000.0)
         updateGoalProgress(context, financialGoals[1].id, 3000.0)
         updateGoalProgress(context, financialGoals[2].id, 1500.0)
         updateGoalProgress(context, financialGoals[3].id, 2500.0)
 
-        // 1 Budget Goal
-        addOrUpdateBudgetGoal(context, "Rent / Mortgage", 9000.0)
+        addOrUpdateBudgetGoal(context, "Rent / Mortgage", 9000.0, 8000.0)
 
         Log.d(TAG, "Demo data seeding complete: ${transactions.size} transactions, ${financialGoals.size} goals, ${budgetGoals.size} budget goals")
     }
